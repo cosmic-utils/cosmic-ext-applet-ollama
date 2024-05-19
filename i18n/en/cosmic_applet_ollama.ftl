@@ -1,0 +1,1 @@
+window-title = COSMIC Ollama

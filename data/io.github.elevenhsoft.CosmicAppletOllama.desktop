@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Ollama
+Type=Application
+Exec=cosmic-applet-ollama
+Terminal=false
+Categories=Cosmic;Iced;
+Keywords=Cosmic;Iced;
+Icon=io.github.elevenhsoft.CosmicAppletOllama
+StartupNotify=true
+NoDisplay=true
+X-CosmicApplet=true
+X-HostWaylandDisplay=true
+X-CosmicHoverPopup=Auto
