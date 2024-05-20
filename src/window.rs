@@ -16,7 +16,7 @@ use cosmic::{
 
 use crate::{
     fl,
-    models::Models,
+    models::{is_installed, Models},
     request::{prompt_req, Api, GenerateResponse},
 };
 
@@ -38,6 +38,7 @@ pub struct Window {
     prompt: Arc<String>,
     user_messages: Vec<String>,
     ollama_responses: Vec<String>,
+    system_messages: Vec<String>,
     generating: bool,
     models: Vec<Models>,
     selected_model: Arc<Models>,
@@ -70,6 +71,7 @@ impl Application for Window {
     ) {
         let user_messages = Vec::new();
         let ollama_responses = Vec::new();
+        let system_messages = Vec::new();
 
         let models: Vec<Models> = vec![
             Models::NoModel,
@@ -94,6 +96,7 @@ impl Application for Window {
                 prompt: Arc::new(String::new()),
                 user_messages,
                 ollama_responses,
+                system_messages,
                 generating: false,
                 models,
                 selected_model: Arc::new(Models::NoModel),
@@ -153,11 +156,17 @@ impl Application for Window {
                 self.generating = false;
                 if response.is_some() {
                     self.ollama_responses.push(response.unwrap().response)
+                } else {
+                    self.system_messages.push(fl!("no-response"))
                 }
             }
             Message::ChangeModel(index) => {
                 self.model_index = Some(index);
                 self.selected_model = Arc::new(self.models[index].clone());
+
+                if !is_installed(&self.selected_model) {
+                    self.system_messages.push(fl!("model-not-installed"));
+                }
             }
         };
 
@@ -199,6 +208,10 @@ impl Application for Window {
             chat = chat.push(self.chat_messages(message))
         }
 
+        for message in &self.system_messages {
+            chat = chat.push(self.system_messages(message.to_string()))
+        }
+
         let generating_info = if self.generating {
             widget::Container::new(widget::text(fl!("chat-typing")))
                 .padding(12)
@@ -238,6 +251,22 @@ impl Window {
         let ai_col = widget::column().push(ai);
 
         let content = widget::column().push(user_col).push(ai_col).spacing(10);
+
+        widget::Container::new(content).width(Length::Fill).into()
+    }
+
+    fn system_messages(&self, message: String) -> Element<Message> {
+        let user = widget::Container::new(
+            widget::Container::new(widget::text(message))
+                .padding(12)
+                .style(theme::Container::List),
+        )
+        .width(Length::Fill)
+        .align_x(Horizontal::Right);
+
+        let user_col = widget::column().push(user);
+
+        let content = widget::column().push(user_col).spacing(10);
 
         widget::Container::new(content).width(Length::Fill).into()
     }
