@@ -8,9 +8,11 @@ vendor_args := if vendor == '1' { '--frozen --offline' } else { '' }
 debug_args := if debug == '1' { '' } else { '--release' }
 cargo_args := vendor_args + ' ' + debug_args
 
+name := 'cosmic-applet-ollama'
+
 targetdir := env('CARGO_TARGET_DIR', 'target')
 sharedir := rootdir + prefix + '/share'
-iconsdir := sharedir + '/icons/hicolor'
+iconsdir := sharedir + '/icons/hicolor/scalable/apps'
 prefixdir := prefix + '/bin'
 bindir := rootdir + prefixdir
 
@@ -31,15 +33,19 @@ build-vendored *args: vendor-extract (build-release '--frozen --offline' args)
 _link_applet name:
     ln -sf {{cosmic-applets-bin}} {{bindir}}/{{name}}
 
-_install_icons name:
-    find 'data'/'icons' -type f -exec echo {} \; | rev | cut -d'/' -f-3 | rev | xargs -d '\n' -I {} install -Dm0644 'data'/'icons'/{} {{iconsdir}}/{}
+_install_icon:
+    install -Dm0644 'data/icons/scalable/apps/io.github.elevenhsoft.CosmicAppletOllama-symbolic.svg' {{iconsdir}}
 
 _install_desktop path:
     install -Dm0644 {{path}} {{sharedir}}/applications/{{file_name(path)}}
 
-_install_applet id name: (_install_icons name) \
+_install_bin:
+    install -Dm0755 {{targetdir}}/{{target}}/{{name}} {{bindir}}/{{name}}
+
+_install_applet id name: \
+    _install_icon \
     (_install_desktop 'data/' + id + '.desktop') \
-    (_link_applet name)
+    _install_bin
 
 
 # Installs files into the system
