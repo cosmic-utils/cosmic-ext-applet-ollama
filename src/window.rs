@@ -174,9 +174,7 @@ impl Application for Window {
     fn view(&self) -> cosmic::prelude::Element<Self::Message> {
         self.core
             .applet
-            .icon_button_from_handle(
-                widget::icon::from_name("io.github.elevenhsoft.CosmicAppletOllama").into(),
-            )
+            .icon_button("io.github.elevenhsoft.CosmicAppletOllama-symbolic")
             .on_press(Message::TogglePopup)
             .into()
     }

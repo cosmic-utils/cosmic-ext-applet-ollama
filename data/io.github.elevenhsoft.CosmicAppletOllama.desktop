@@ -9,5 +9,4 @@ Icon=io.github.elevenhsoft.CosmicAppletOllama
 StartupNotify=true
 NoDisplay=true
 X-CosmicApplet=true
-X-HostWaylandDisplay=true
 X-CosmicHoverPopup=Auto
