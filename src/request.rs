@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
-use cosmic::iced::futures::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+
+use crate::models::{is_installed, Models};
 
 pub struct Api {
     client: Client,
     port: u32,
-    model: Option<String>,
+    model: Arc<Models>,
 }
 
 #[derive(Serialize)]
@@ -37,7 +38,7 @@ impl Api {
         Self {
             client: Client::new(),
             port: 11434,
-            model: None,
+            model: Arc::new(Models::NoModel),
         }
     }
 
@@ -46,27 +47,33 @@ impl Api {
         self
     }
 
-    pub fn set_model(&mut self, model: String) -> &mut Self {
-        self.model = Some(model);
+    pub fn set_model(&mut self, model: Arc<Models>) -> &mut Self {
+        if *model != Models::NoModel && is_installed(&model) {
+            self.model = model;
+        }
         self
     }
 }
 
-pub async fn prompt_req(api: Api, prompt: Arc<String>) -> GenerateResponse {
-    let model = api.model.as_ref().unwrap().clone();
+pub async fn prompt_req(api: Api, prompt: Arc<String>) -> Option<GenerateResponse> {
     let query_params = GenerateQuery {
-        model,
+        model: api.model.to_string(),
         prompt: prompt.to_string(),
         stream: false,
     };
 
-    api.client
-        .post(format!("http://localhost:{}/api/generate", api.port))
-        .json::<GenerateQuery>(&query_params)
-        .send()
-        .await
-        .unwrap()
-        .json::<GenerateResponse>()
-        .await
-        .unwrap()
+    if api.model.to_string() != "none" && is_installed(&api.model) {
+        return Some(
+            api.client
+                .post(format!("http://localhost:{}/api/generate", api.port))
+                .json::<GenerateQuery>(&query_params)
+                .send()
+                .await
+                .unwrap()
+                .json::<GenerateResponse>()
+                .await
+                .unwrap(),
+        );
+    }
+    None
 }

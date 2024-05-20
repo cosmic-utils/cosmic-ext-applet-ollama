@@ -8,13 +8,17 @@ use cosmic::{
         alignment::Horizontal,
         wayland::popup::{destroy_popup, get_popup},
         window::Id,
-        Alignment, Length,
+        Length,
     },
     iced_widget::Scrollable,
     theme, widget, Application, Command, Element,
 };
 
-use crate::request::{prompt_req, Api, GenerateResponse};
+use crate::{
+    fl,
+    models::Models,
+    request::{prompt_req, Api, GenerateResponse},
+};
 
 const ID: &'static str = "io.github.elevenhsoft.CosmicAppletOllama";
 
@@ -24,7 +28,8 @@ pub enum Message {
     TogglePopup,
     EnterPrompt(String),
     SendPrompt,
-    ReceivedMessage(GenerateResponse),
+    ReceivedMessage(Option<GenerateResponse>),
+    ChangeModel(usize),
 }
 
 pub struct Window {
@@ -33,6 +38,10 @@ pub struct Window {
     prompt: Arc<String>,
     user_messages: Vec<String>,
     ollama_responses: Vec<String>,
+    generating: bool,
+    models: Vec<Models>,
+    selected_model: Arc<Models>,
+    model_index: Option<usize>,
 }
 
 impl Application for Window {
@@ -62,6 +71,22 @@ impl Application for Window {
         let user_messages = Vec::new();
         let ollama_responses = Vec::new();
 
+        let models: Vec<Models> = vec![
+            Models::NoModel,
+            Models::Llama3,
+            Models::Llama370b,
+            Models::Phi3,
+            Models::Mistral,
+            Models::NeuralChat,
+            Models::Starling,
+            Models::CodeLlama,
+            Models::Llama2Uncensored,
+            Models::LlaVa,
+            Models::Gemma,
+            Models::Gemma7b,
+            Models::Solar,
+        ];
+
         (
             Self {
                 core,
@@ -69,6 +94,10 @@ impl Application for Window {
                 prompt: Arc::new(String::new()),
                 user_messages,
                 ollama_responses,
+                generating: false,
+                models,
+                selected_model: Arc::new(Models::NoModel),
+                model_index: Some(0),
             },
             Command::none(),
         )
@@ -96,9 +125,9 @@ impl Application for Window {
                             .applet
                             .get_popup_settings(Id::MAIN, new_id, None, None, None);
                     popup_settings.positioner.size_limits = iced::Limits::NONE
-                        .max_width(400.0)
+                        .max_width(680.0)
                         .min_width(300.0)
-                        .min_height(200.0)
+                        .min_height(600.0)
                         .max_height(800.0);
                     get_popup(popup_settings)
                 }
@@ -106,19 +135,30 @@ impl Application for Window {
             Message::EnterPrompt(prompt) => self.prompt = Arc::new(prompt),
             Message::SendPrompt => {
                 let prompt = Arc::clone(&self.prompt);
+                let model = Arc::clone(&self.selected_model);
+                self.generating = true;
                 self.user_messages.push(self.prompt.to_string());
                 self.prompt = Arc::new(String::new());
 
                 return Command::perform(
                     async move {
                         let mut api = Api::new();
-                        api.set_model(String::from("llama3"));
+                        api.set_model(model);
                         prompt_req(api, prompt).await
                     },
                     |response| app(Message::ReceivedMessage(response)),
                 );
             }
-            Message::ReceivedMessage(response) => self.ollama_responses.push(response.response),
+            Message::ReceivedMessage(response) => {
+                self.generating = false;
+                if response.is_some() {
+                    self.ollama_responses.push(response.unwrap().response)
+                }
+            }
+            Message::ChangeModel(index) => {
+                self.model_index = Some(index);
+                self.selected_model = Arc::new(self.models[index].clone());
+            }
         };
 
         Command::none()
@@ -135,10 +175,18 @@ impl Application for Window {
     }
 
     fn view_window(&self, _id: Id) -> Element<Self::Message> {
-        let prompt_input = cosmic::iced::widget::text_input("Type something..", &self.prompt)
+        let prompt_input = cosmic::iced::widget::text_input(&fl!("prompt-field"), &self.prompt)
             .on_input(Message::EnterPrompt)
             .on_submit(Message::SendPrompt)
             .width(Length::Fill);
+
+        let models_dropdown =
+            widget::dropdown(&self.models, self.model_index, Message::ChangeModel).width(220);
+
+        let fields = widget::row()
+            .push(prompt_input)
+            .push(models_dropdown)
+            .spacing(6);
 
         let mut chat = widget::Column::new().spacing(10).width(Length::Fill);
 
@@ -148,11 +196,22 @@ impl Application for Window {
             .into_iter()
             .zip(self.user_messages.clone())
         {
-            chat = chat.push(self.chat_response(message))
+            chat = chat.push(self.chat_messages(message))
         }
 
+        let generating_info = if self.generating {
+            widget::Container::new(widget::text(fl!("chat-typing")))
+                .padding(12)
+                .style(theme::Container::List)
+                .center_x()
+        } else {
+            widget::Container::new(widget::column())
+        };
+
+        chat = chat.push(generating_info);
+
         let content_list = widget::column()
-            .push(padded_control(prompt_input))
+            .push(padded_control(fields))
             .push(padded_control(Scrollable::new(chat)))
             .padding([8, 0]);
 
@@ -161,7 +220,7 @@ impl Application for Window {
 }
 
 impl Window {
-    fn chat_response(&self, message: (String, String)) -> Element<Message> {
+    fn chat_messages(&self, message: (String, String)) -> Element<Message> {
         let user = widget::Container::new(
             widget::Container::new(widget::text(message.1))
                 .padding(12)
