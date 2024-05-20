@@ -1,8 +1,8 @@
+use enum_iterator::Sequence;
 use std::sync::Arc;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Sequence)]
 pub enum Models {
-    NoModel,
     Llama3,
     Llama370b,
     Phi3,
@@ -20,7 +20,6 @@ pub enum Models {
 impl AsRef<str> for Models {
     fn as_ref(&self) -> &str {
         match self {
-            Models::NoModel => "None",
             Models::Llama3 => "Llama3",
             Models::Llama370b => "Llam3 70B",
             Models::Phi3 => "Phi 3",
@@ -40,7 +39,6 @@ impl AsRef<str> for Models {
 impl std::fmt::Display for Models {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Models::NoModel => write!(f, "none"),
             Models::Llama3 => write!(f, "llama3"),
             Models::Llama370b => write!(f, "llama3:70b"),
             Models::Phi3 => write!(f, "phi3"),

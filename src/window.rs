@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use cosmic::{
     app::{message::app, Core, Message as CosmicMessage},
     applet::padded_control,
@@ -13,6 +11,8 @@ use cosmic::{
     iced_widget::Scrollable,
     theme, widget, Application, Command, Element,
 };
+use enum_iterator::all;
+use std::sync::Arc;
 
 use crate::{
     fl,
@@ -73,21 +73,13 @@ impl Application for Window {
         let ollama_responses = Vec::new();
         let system_messages = Vec::new();
 
-        let models: Vec<Models> = vec![
-            Models::NoModel,
-            Models::Llama3,
-            Models::Llama370b,
-            Models::Phi3,
-            Models::Mistral,
-            Models::NeuralChat,
-            Models::Starling,
-            Models::CodeLlama,
-            Models::Llama2Uncensored,
-            Models::LlaVa,
-            Models::Gemma,
-            Models::Gemma7b,
-            Models::Solar,
-        ];
+        let mut models: Vec<Models> = Vec::new();
+
+        for model in all::<Models>().collect::<Vec<_>>() {
+            if is_installed(&Arc::new(model.clone())) {
+                models.push(model);
+            }
+        }
 
         (
             Self {
@@ -99,7 +91,7 @@ impl Application for Window {
                 system_messages,
                 generating: false,
                 models,
-                selected_model: Arc::new(Models::NoModel),
+                selected_model: Arc::new(Models::Llama3),
                 model_index: Some(0),
             },
             Command::none(),

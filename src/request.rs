@@ -38,7 +38,7 @@ impl Api {
         Self {
             client: Client::new(),
             port: 11434,
-            model: Arc::new(Models::NoModel),
+            model: Arc::new(Models::Llama3),
         }
     }
 
@@ -48,7 +48,7 @@ impl Api {
     }
 
     pub fn set_model(&mut self, model: Arc<Models>) -> &mut Self {
-        if *model != Models::NoModel && is_installed(&model) {
+        if is_installed(&model) {
             self.model = model;
         }
         self
@@ -62,7 +62,7 @@ pub async fn prompt_req(api: Api, prompt: Arc<String>) -> Option<GenerateRespons
         stream: false,
     };
 
-    if api.model.to_string() != "none" && is_installed(&api.model) {
+    if is_installed(&api.model) {
         return Some(
             api.client
                 .post(format!("http://localhost:{}/api/generate", api.port))
