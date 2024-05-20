@@ -182,8 +182,9 @@ impl Application for Window {
             .on_submit(Message::SendPrompt)
             .width(Length::Fill);
 
-        let clear_chat =
-            widget::button(widget::text(fl!("clear-chat"))).on_press(Message::ClearChat);
+        let clear_chat = widget::button(widget::text(fl!("clear-chat")))
+            .on_press(Message::ClearChat)
+            .style(theme::Button::Destructive);
 
         let models_dropdown =
             widget::dropdown(&self.models, self.model_index, Message::ChangeModel).width(220);
