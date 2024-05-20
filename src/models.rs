@@ -58,13 +58,11 @@ impl std::fmt::Display for Models {
 }
 
 pub fn is_installed(model: &Arc<Models>) -> bool {
-    let ollama_list = std::process::Command::new("ollama")
-        .arg("list")
-        .output()
-        .unwrap()
-        .stdout;
+    if let Ok(output) = std::process::Command::new("ollama").arg("list").output() {
+        let output = String::from_utf8_lossy(&output.stdout);
 
-    let output = String::from_utf8_lossy(&ollama_list);
+        return output.to_lowercase().contains(&model.to_string());
+    }
 
-    output.to_lowercase().contains(&model.to_string())
+    false
 }
