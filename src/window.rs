@@ -30,6 +30,7 @@ pub enum Message {
     SendPrompt,
     ReceivedMessage(Option<GenerateResponse>),
     ChangeModel(usize),
+    ClearChat,
 }
 
 pub struct Window {
@@ -160,6 +161,11 @@ impl Application for Window {
                     self.system_messages.push(fl!("model-not-installed"));
                 }
             }
+            Message::ClearChat => {
+                self.system_messages.clear();
+                self.user_messages.clear();
+                self.ollama_responses.clear();
+            }
         };
 
         Command::none()
@@ -181,12 +187,16 @@ impl Application for Window {
             .on_submit(Message::SendPrompt)
             .width(Length::Fill);
 
+        let clear_chat =
+            widget::button(widget::text(fl!("clear-chat"))).on_press(Message::ClearChat);
+
         let models_dropdown =
             widget::dropdown(&self.models, self.model_index, Message::ChangeModel).width(220);
 
         let fields = widget::row()
             .push(prompt_input)
             .push(models_dropdown)
+            .push(clear_chat)
             .spacing(6);
 
         let mut chat = widget::Column::new().spacing(10).width(Length::Fill);
