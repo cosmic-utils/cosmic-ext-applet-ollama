@@ -120,11 +120,8 @@ impl Application for Window {
                         self.core
                             .applet
                             .get_popup_settings(Id::MAIN, new_id, None, None, None);
-                    popup_settings.positioner.size_limits = iced::Limits::NONE
-                        .max_width(680.0)
-                        .min_width(300.0)
-                        .min_height(600.0)
-                        .max_height(800.0);
+                    popup_settings.positioner.size_limits =
+                        iced::Limits::NONE.width(680.0).height(800.0);
                     get_popup(popup_settings)
                 }
             }
@@ -225,10 +222,14 @@ impl Application for Window {
 
         let content_list = widget::column()
             .push(padded_control(fields))
-            .push(padded_control(Scrollable::new(chat)))
+            .push(padded_control(Scrollable::new(chat).height(Length::Fill)))
             .padding([8, 0]);
 
-        self.core.applet.popup_container(content_list).into()
+        self.core
+            .applet
+            .popup_container(content_list)
+            .height(Length::Fill)
+            .into()
     }
 }
 
