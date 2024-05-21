@@ -1,26 +1,31 @@
 use cosmic::{
-    app::{message::app, Core, Message as CosmicMessage},
+    app::{Core, Message as CosmicMessage},
     applet::padded_control,
     iced::{
         self,
         alignment::Horizontal,
         wayland::popup::{destroy_popup, get_popup},
         window::Id,
-        Length,
+        Length, Subscription,
     },
     iced_widget::Scrollable,
     theme, widget, Application, Command, Element,
 };
 use enum_iterator::all;
-use std::sync::Arc;
 
 use crate::{
     fl,
     models::{is_installed, Models},
-    request::{prompt_req, Api, GenerateResponse},
+    stream,
 };
 
 const ID: &'static str = "io.github.elevenhsoft.CosmicAppletOllama";
+
+#[derive(Debug, Clone)]
+pub enum Conversation {
+    User(String),
+    Bot(String),
+}
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -28,22 +33,22 @@ pub enum Message {
     TogglePopup,
     EnterPrompt(String),
     SendPrompt,
-    ReceivedMessage(Option<GenerateResponse>),
     ChangeModel(usize),
     ClearChat,
+    BotEvent(stream::Event),
 }
 
 pub struct Window {
     core: Core,
     popup: Option<Id>,
-    prompt: Arc<String>,
-    user_messages: Vec<String>,
-    ollama_responses: Vec<String>,
+    prompt: String,
+    conversation: Vec<Conversation>,
+    bot_response: String,
     system_messages: Vec<String>,
-    generating: bool,
     models: Vec<Models>,
-    selected_model: Arc<Models>,
+    selected_model: Models,
     model_index: Option<usize>,
+    last_id: usize,
 }
 
 impl Application for Window {
@@ -70,14 +75,12 @@ impl Application for Window {
         Self,
         cosmic::iced::Command<cosmic::app::Message<Self::Message>>,
     ) {
-        let user_messages = Vec::new();
-        let ollama_responses = Vec::new();
         let system_messages = Vec::new();
 
         let mut models: Vec<Models> = Vec::new();
 
         for model in all::<Models>().collect::<Vec<_>>() {
-            if is_installed(&Arc::new(model.clone())) {
+            if is_installed(&model.clone()) {
                 models.push(model);
             }
         }
@@ -86,14 +89,14 @@ impl Application for Window {
             Self {
                 core,
                 popup: None,
-                prompt: Arc::new(String::new()),
-                user_messages,
-                ollama_responses,
+                prompt: String::new(),
+                conversation: Vec::new(),
+                bot_response: String::new(),
                 system_messages,
-                generating: false,
                 models,
-                selected_model: Arc::new(Models::Llama3),
+                selected_model: Models::Llama3,
                 model_index: Some(0),
+                last_id: 0,
             },
             Command::none(),
         )
@@ -101,6 +104,12 @@ impl Application for Window {
 
     fn on_close_requested(&self, id: Id) -> Option<Message> {
         Some(Message::PopupClosed(id))
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        Subscription::batch(vec![
+            stream::subscription(self.last_id).map(Message::BotEvent)
+        ])
     }
 
     fn update(&mut self, message: Message) -> Command<CosmicMessage<Message>> {
@@ -125,43 +134,42 @@ impl Application for Window {
                     get_popup(popup_settings)
                 }
             }
-            Message::EnterPrompt(prompt) => self.prompt = Arc::new(prompt),
+            Message::EnterPrompt(prompt) => self.prompt = prompt,
             Message::SendPrompt => {
-                let prompt = Arc::clone(&self.prompt);
-                let model = Arc::clone(&self.selected_model);
-                self.generating = true;
-                self.user_messages.push(self.prompt.to_string());
-                self.prompt = Arc::new(String::new());
-
-                return Command::perform(
-                    async move {
-                        let mut api = Api::new();
-                        api.set_model(model);
-                        prompt_req(api, prompt).await
-                    },
-                    |response| app(Message::ReceivedMessage(response)),
-                );
+                self.conversation
+                    .push(Conversation::User(self.prompt.clone()));
+                self.last_id += 1;
             }
-            Message::ReceivedMessage(response) => {
-                self.generating = false;
-                if response.is_some() {
-                    self.ollama_responses.push(response.unwrap().response)
-                } else {
-                    self.system_messages.push(fl!("no-response"))
+            Message::BotEvent(ev) => match ev {
+                stream::Event::Ready(tx) => {
+                    _ = tx.blocking_send(stream::Request::Ask((
+                        self.selected_model.clone(),
+                        self.prompt.clone(),
+                    )));
+                    self.prompt.clear();
                 }
-            }
+                stream::Event::Response(message) => {
+                    let response = message.response;
+                    self.bot_response.push_str(&response);
+                }
+                stream::Event::Done => {
+                    self.conversation
+                        .push(Conversation::Bot(self.bot_response.clone()));
+                    self.bot_response.clear();
+                }
+            },
             Message::ChangeModel(index) => {
                 self.model_index = Some(index);
-                self.selected_model = Arc::new(self.models[index].clone());
+                self.selected_model = self.models[index].clone();
 
                 if !is_installed(&self.selected_model) {
                     self.system_messages.push(fl!("model-not-installed"));
                 }
             }
             Message::ClearChat => {
+                self.prompt.clear();
                 self.system_messages.clear();
-                self.user_messages.clear();
-                self.ollama_responses.clear();
+                self.conversation.clear();
             }
         };
 
@@ -197,29 +205,17 @@ impl Application for Window {
 
         let mut chat = widget::Column::new().spacing(10).width(Length::Fill);
 
-        for message in self
-            .ollama_responses
-            .clone()
-            .into_iter()
-            .zip(self.user_messages.clone())
-        {
-            chat = chat.push(self.chat_messages(message))
-        }
+        chat = chat.push(self.chat_messages(self.conversation.clone()));
+
+        chat = chat.push(self.bot_bubble(if self.bot_response.is_empty() {
+            String::from("...")
+        } else {
+            self.bot_response.clone()
+        }));
 
         for message in &self.system_messages {
-            chat = chat.push(self.system_messages(message.to_string()))
+            chat = chat.push(self.system_bubble(message.to_string()))
         }
-
-        let generating_info = if self.generating {
-            widget::Container::new(widget::text(fl!("chat-typing")))
-                .padding(12)
-                .style(theme::Container::List)
-                .center_x()
-        } else {
-            widget::Container::new(widget::column())
-        };
-
-        chat = chat.push(generating_info);
 
         let content_list = widget::column()
             .push(padded_control(fields))
@@ -235,29 +231,56 @@ impl Application for Window {
 }
 
 impl Window {
-    fn chat_messages(&self, message: (String, String)) -> Element<Message> {
+    fn bot_bubble(&self, message: String) -> Element<Message> {
+        let line = widget::row().push(widget::text(message.to_owned()));
+
+        let ai = widget::Container::new(line)
+            .padding(12)
+            .style(theme::Container::List);
+
+        let ai_col = widget::column().push(ai);
+        let content = widget::column().push(ai_col).spacing(10);
+
+        widget::Container::new(content).width(Length::Fill).into()
+    }
+
+    fn user_bubble(&self, message: String) -> Element<Message> {
         let user = widget::Container::new(
-            widget::Container::new(widget::text(message.1))
+            widget::Container::new(widget::text(message))
                 .padding(12)
                 .style(theme::Container::List),
         )
         .width(Length::Fill)
         .align_x(Horizontal::Right);
 
-        let ai = widget::Container::new(widget::text(message.0))
-            .padding(12)
-            .style(theme::Container::List);
-
         let user_col = widget::column().push(user);
-
-        let ai_col = widget::column().push(ai);
-
-        let content = widget::column().push(user_col).push(ai_col).spacing(10);
+        let content = widget::column().push(user_col);
 
         widget::Container::new(content).width(Length::Fill).into()
     }
 
-    fn system_messages(&self, message: String) -> Element<Message> {
+    fn chat_messages(&self, conv: Vec<Conversation>) -> Element<Message> {
+        let mut content = widget::column().spacing(20);
+
+        for c in conv {
+            match c {
+                Conversation::User(text) => {
+                    if !text.is_empty() {
+                        content = content.push(self.user_bubble(text))
+                    }
+                }
+                Conversation::Bot(text) => {
+                    if !text.is_empty() {
+                        content = content.push(self.bot_bubble(text))
+                    }
+                }
+            }
+        }
+
+        widget::Container::new(content).width(Length::Fill).into()
+    }
+
+    fn system_bubble(&self, message: String) -> Element<Message> {
         let user = widget::Container::new(
             widget::Container::new(widget::text(message))
                 .padding(12)

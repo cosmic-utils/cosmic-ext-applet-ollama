@@ -20,6 +20,9 @@ anyhow = "1.0.86"
 rust-embed = "8.4.0"
 once_cell = "1.19.0"
 enum-iterator = "2.1.0"
+async-stream = "0.3.5"
+futures = "0.3.30"
+bytes = "1.6.0"
 
 [dependencies.libcosmic]
 git = "https://github.com/pop-os/libcosmic"

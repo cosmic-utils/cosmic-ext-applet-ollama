@@ -1,6 +1,6 @@
 mod localize;
 mod models;
-mod request;
+mod stream;
 mod window;
 
 use window::Window;

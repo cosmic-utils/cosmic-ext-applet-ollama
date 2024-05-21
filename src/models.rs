@@ -1,5 +1,4 @@
 use enum_iterator::Sequence;
-use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, Sequence)]
 pub enum Models {
@@ -55,7 +54,7 @@ impl std::fmt::Display for Models {
     }
 }
 
-pub fn is_installed(model: &Arc<Models>) -> bool {
+pub fn is_installed(model: &Models) -> bool {
     if let Ok(output) = std::process::Command::new("ollama").arg("list").output() {
         let output = String::from_utf8_lossy(&output.stdout);
 
