@@ -242,7 +242,7 @@ impl Application for Window {
 
 impl Window {
     fn chat_view(&self) -> Element<Message> {
-        let prompt_input = cosmic::iced::widget::text_input(&fl!("prompt-field"), &self.prompt)
+        let prompt_input = widget::text_input(fl!("prompt-field"), &self.prompt)
             .on_input(Message::EnterPrompt)
             .on_submit(Message::SendPrompt)
             .width(Length::Fill);
