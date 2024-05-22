@@ -4,7 +4,7 @@ Before using this applet, you must have Ollama installed on your system. To do t
 
 `curl -fsSL https://ollama.com/install.sh | sh`
 
-Source: (Ollama Github)[https://github.com/ollama/ollama?tab=readme-ov-file#linux]
+Source: [Ollama Github](https://github.com/ollama/ollama?tab=readme-ov-file#linux)
 
 After installing Ollama. Pull some models, you would like to use with chat, for example
 
@@ -14,7 +14,7 @@ More models you can find in library: https://ollama.com/library
 
 # Installing this applet
 
-Clone the repository, and use (just)[https://github.com/casey/just]
+Clone the repository, and use [just](https://github.com/casey/just)
 
 If you don't have `just` installed, it is available in PopOS repository, so you can install it with `apt`
 
