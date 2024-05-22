@@ -4,14 +4,16 @@ use cosmic::{
     iced::{
         self,
         alignment::Horizontal,
+        id,
         wayland::popup::{destroy_popup, get_popup},
         window::Id,
         Length, Subscription,
     },
-    iced_widget::Scrollable,
-    theme,
-    widget::{self},
-    Application, Command, Element,
+    iced_widget::{
+        scrollable::{snap_to, RelativeOffset},
+        Scrollable,
+    },
+    theme, widget, Application, Command, Element,
 };
 use enum_iterator::all;
 
@@ -60,6 +62,7 @@ pub struct Window {
     selected_model: Models,
     model_index: Option<usize>,
     last_id: usize,
+    chat_id: id::Id,
 }
 
 impl Application for Window {
@@ -109,6 +112,7 @@ impl Application for Window {
                 selected_model: Models::Llama3,
                 model_index: Some(0),
                 last_id: 0,
+                chat_id: id::Id::new("chat"),
             },
             Command::none(),
         )
@@ -165,6 +169,8 @@ impl Application for Window {
                 stream::Event::Response(message) => {
                     let response = message.response;
                     self.bot_response.push_str(&response);
+
+                    return snap_to(self.chat_id.clone(), RelativeOffset::END);
                 }
                 stream::Event::Done => {
                     self.conversation
@@ -251,7 +257,10 @@ impl Window {
 
         widget::column()
             .push(padded_control(fields))
-            .push(padded_control(Scrollable::new(chat).height(Length::Fill)))
+            .push(padded_control(
+                Scrollable::new(chat).id(self.chat_id.clone()),
+            ))
+            .height(Length::Fill)
             .into()
     }
 
@@ -331,13 +340,13 @@ impl Window {
     fn menu_bar(&self) -> Element<Message> {
         widget::row()
             .push(
-                widget::button("Chat")
+                widget::button(widget::text(fl!("chat")))
                     .width(100)
                     .on_press(Message::ChatPage)
                     .style(theme::Button::Suggested),
             )
             .push(
-                widget::button("Settings")
+                widget::button(widget::text(fl!("settings")))
                     .width(100)
                     .on_press(Message::SettingsPage),
             )
