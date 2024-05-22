@@ -9,7 +9,9 @@ use cosmic::{
         Length, Subscription,
     },
     iced_widget::Scrollable,
-    theme, widget, Application, Command, Element,
+    theme,
+    widget::{self},
+    Application, Command, Element,
 };
 use enum_iterator::all;
 
@@ -28,7 +30,15 @@ pub enum Conversation {
 }
 
 #[derive(Debug, Clone)]
+pub enum Pages {
+    Chat,
+    Settings,
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
+    ChatPage,
+    SettingsPage,
     PopupClosed(Id),
     TogglePopup,
     EnterPrompt(String),
@@ -41,6 +51,7 @@ pub enum Message {
 pub struct Window {
     core: Core,
     popup: Option<Id>,
+    page: Pages,
     prompt: String,
     conversation: Vec<Conversation>,
     bot_response: String,
@@ -89,6 +100,7 @@ impl Application for Window {
             Self {
                 core,
                 popup: None,
+                page: Pages::Chat,
                 prompt: String::new(),
                 conversation: Vec::new(),
                 bot_response: String::new(),
@@ -114,6 +126,8 @@ impl Application for Window {
 
     fn update(&mut self, message: Message) -> Command<CosmicMessage<Message>> {
         match message {
+            Message::ChatPage => self.page = Pages::Chat,
+            Message::SettingsPage => self.page = Pages::Settings,
             Message::PopupClosed(id) => {
                 if self.popup.as_ref() == Some(&id) {
                     self.popup = None;
@@ -185,6 +199,28 @@ impl Application for Window {
     }
 
     fn view_window(&self, _id: Id) -> Element<Self::Message> {
+        let menu_row = widget::row().push(padded_control(self.menu_bar()));
+
+        let page_view = match self.page {
+            Pages::Chat => self.chat_view(),
+            Pages::Settings => self.settings_view(),
+        };
+
+        let content_list = widget::column()
+            .push(padded_control(menu_row))
+            .push(padded_control(page_view))
+            .padding(10);
+
+        self.core
+            .applet
+            .popup_container(content_list)
+            .height(Length::Fill)
+            .into()
+    }
+}
+
+impl Window {
+    fn chat_view(&self) -> Element<Message> {
         let prompt_input = cosmic::iced::widget::text_input(&fl!("prompt-field"), &self.prompt)
             .on_input(Message::EnterPrompt)
             .on_submit(Message::SendPrompt)
@@ -194,14 +230,10 @@ impl Application for Window {
             .on_press(Message::ClearChat)
             .style(theme::Button::Destructive);
 
-        let models_dropdown =
-            widget::dropdown(&self.models, self.model_index, Message::ChangeModel).width(220);
-
         let fields = widget::row()
             .push(prompt_input)
-            .push(models_dropdown)
             .push(clear_chat)
-            .spacing(6);
+            .spacing(10);
 
         let mut chat = widget::Column::new().spacing(10).width(Length::Fill);
 
@@ -217,20 +249,20 @@ impl Application for Window {
             chat = chat.push(self.system_bubble(message.to_string()))
         }
 
-        let content_list = widget::column()
+        widget::column()
             .push(padded_control(fields))
             .push(padded_control(Scrollable::new(chat).height(Length::Fill)))
-            .padding([8, 0]);
+            .into()
+    }
 
-        self.core
-            .applet
-            .popup_container(content_list)
+    fn settings_view(&self) -> Element<Message> {
+        let content = widget::column().push(widget::text("Settings"));
+
+        widget::Container::new(padded_control(content))
             .height(Length::Fill)
             .into()
     }
-}
 
-impl Window {
     fn bot_bubble(&self, message: String) -> Element<Message> {
         let line = widget::row().push(widget::text(message.to_owned()));
 
@@ -294,5 +326,26 @@ impl Window {
         let content = widget::column().push(user_col).spacing(10);
 
         widget::Container::new(content).width(Length::Fill).into()
+    }
+
+    fn menu_bar(&self) -> Element<Message> {
+        widget::row()
+            .push(
+                widget::button("Chat")
+                    .width(100)
+                    .on_press(Message::ChatPage)
+                    .style(theme::Button::Suggested),
+            )
+            .push(
+                widget::button("Settings")
+                    .width(100)
+                    .on_press(Message::SettingsPage),
+            )
+            .push(
+                widget::dropdown(&self.models, self.model_index, Message::ChangeModel)
+                    .width(Length::Fill),
+            )
+            .spacing(10)
+            .into()
     }
 }
