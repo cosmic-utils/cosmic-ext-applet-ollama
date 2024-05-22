@@ -21,13 +21,22 @@ pub enum Event {
 #[derive(Debug, Clone)]
 pub enum Request {
     Ask((Models, String)),
+    AskWithContext((Models, String, Option<Vec<u64>>)),
 }
 
 #[derive(Serialize)]
-struct GenerateQuery {
+struct GenerateNonContext {
     model: String,
     prompt: String,
     stream: bool,
+}
+
+#[derive(Serialize)]
+struct GenerateWithContext {
+    model: String,
+    prompt: String,
+    stream: bool,
+    context: Vec<u64>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -54,23 +63,41 @@ impl Bot {
     pub async fn new(
         model: String,
         prompt: String,
+        context: Option<Vec<u64>>,
     ) -> anyhow::Result<(
         Self,
         impl Stream<Item = anyhow::Result<bytes::Bytes, reqwest::Error>>,
     )> {
-        let query_params = GenerateQuery {
-            model,
-            prompt,
-            stream: true,
-        };
+        let client = Client::new().post("http://localhost:11434/api/generate");
 
-        let stream = Client::new()
-            .post("http://localhost:11434/api/generate")
-            .json::<GenerateQuery>(&query_params)
-            .send()
-            .await
-            .unwrap()
-            .bytes_stream();
+        let stream = if context.is_none() {
+            let no_context_query = GenerateNonContext {
+                model,
+                prompt,
+                stream: true,
+            };
+
+            client
+                .json::<GenerateNonContext>(&no_context_query)
+                .send()
+                .await
+                .unwrap()
+                .bytes_stream()
+        } else {
+            let context_query = GenerateWithContext {
+                model,
+                prompt,
+                stream: true,
+                context: context.unwrap(),
+            };
+
+            client
+                .json::<GenerateWithContext>(&context_query)
+                .send()
+                .await
+                .unwrap()
+                .bytes_stream()
+        };
 
         let bot = Self {
             prompt: String::new(),
@@ -98,11 +125,12 @@ pub fn subscription<I: 'static + Hash + Copy + Send + Sync>(
 async fn client_request<'a>(
     model: Models,
     prompt: String,
+    context: Option<Vec<u64>>,
     tx: &mpsc::Sender<Event>,
     client: &'a mut Option<(Bot, oneshot::Sender<()>)>,
 ) -> &'a mut Option<(Bot, oneshot::Sender<()>)> {
     if client.is_none() {
-        *client = match Bot::new(model.to_string(), prompt).await {
+        *client = match Bot::new(model.to_string(), prompt, context).await {
             Ok((new_client, responses)) => {
                 let tx = tx.clone();
 
@@ -150,7 +178,10 @@ pub fn service() -> impl Stream<Item = Event> + MaybeSend {
         while let Some(request) = requests_rx.recv().await {
             match request {
                 Request::Ask((model, text)) => {
-                    _ = client_request(model, text, &responses_tx, client).await
+                    _ = client_request(model, text, None, &responses_tx, client).await
+                }
+                Request::AskWithContext((model, text, context)) => {
+                    _ = client_request(model, text, context, &responses_tx, client).await
                 }
             }
         }

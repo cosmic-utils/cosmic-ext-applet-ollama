@@ -7,3 +7,4 @@ no-response = Brak odpowiedzi z serwera
 clear-chat = Wyczyść czat
 chat = Czat
 settings = Ustawienia
+keep-context= Pamiętaj kontekst

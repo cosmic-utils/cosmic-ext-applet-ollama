@@ -48,6 +48,7 @@ pub enum Message {
     ChangeModel(usize),
     ClearChat,
     BotEvent(stream::Event),
+    ToggleContext,
 }
 
 pub struct Window {
@@ -63,6 +64,8 @@ pub struct Window {
     model_index: Option<usize>,
     last_id: usize,
     chat_id: id::Id,
+    keep_context: bool,
+    context: Option<Vec<u64>>,
 }
 
 impl Application for Window {
@@ -113,6 +116,8 @@ impl Application for Window {
                 model_index: Some(0),
                 last_id: 0,
                 chat_id: id::Id::new("chat"),
+                keep_context: true,
+                context: None,
             },
             Command::none(),
         )
@@ -160,15 +165,24 @@ impl Application for Window {
             }
             Message::BotEvent(ev) => match ev {
                 stream::Event::Ready(tx) => {
-                    _ = tx.blocking_send(stream::Request::Ask((
-                        self.selected_model.clone(),
-                        self.prompt.clone(),
-                    )));
+                    if !self.keep_context {
+                        _ = tx.blocking_send(stream::Request::Ask((
+                            self.selected_model.clone(),
+                            self.prompt.clone(),
+                        )));
+                    } else {
+                        _ = tx.blocking_send(stream::Request::AskWithContext((
+                            self.selected_model.clone(),
+                            self.prompt.clone(),
+                            self.context.clone(),
+                        )));
+                    }
+
                     self.prompt.clear();
                 }
                 stream::Event::Response(message) => {
-                    let response = message.response;
-                    self.bot_response.push_str(&response);
+                    self.bot_response.push_str(&message.response);
+                    self.context = message.context;
 
                     return snap_to(self.chat_id.clone(), RelativeOffset::END);
                 }
@@ -191,6 +205,7 @@ impl Application for Window {
                 self.system_messages.clear();
                 self.conversation.clear();
             }
+            Message::ToggleContext => self.keep_context = !self.keep_context,
         };
 
         Command::none()
@@ -265,7 +280,10 @@ impl Window {
     }
 
     fn settings_view(&self) -> Element<Message> {
-        let content = widget::column().push(widget::text("Settings"));
+        let context_toggle = widget::toggler(fl!("keep-context"), self.keep_context, |_| {
+            Message::ToggleContext
+        });
+        let content = widget::column().push(context_toggle);
 
         widget::Container::new(padded_control(content))
             .height(Length::Fill)

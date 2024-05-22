@@ -7,3 +7,4 @@ no-response = No response from server
 clear-chat = Clear chat
 chat = Chat
 settings = Settings
+keep-context= Keep context
