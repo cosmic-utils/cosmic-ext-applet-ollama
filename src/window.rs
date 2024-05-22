@@ -247,9 +247,8 @@ impl Window {
             .on_submit(Message::SendPrompt)
             .width(Length::Fill);
 
-        let clear_chat = widget::button(widget::text(fl!("clear-chat")))
-            .on_press(Message::ClearChat)
-            .style(theme::Button::Destructive);
+        let clear_chat =
+            widget::button(widget::text(fl!("clear-chat"))).on_press(Message::ClearChat);
 
         let fields = widget::row()
             .push(prompt_input)
