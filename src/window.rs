@@ -256,7 +256,7 @@ impl Window {
             .push(clear_chat)
             .spacing(10);
 
-        let mut chat = widget::Column::new().spacing(10).width(Length::Fill);
+        let mut chat = widget::column().spacing(10).width(Length::Fill);
 
         chat = chat.push(self.chat_messages(self.conversation.clone()));
 
@@ -272,9 +272,9 @@ impl Window {
 
         widget::column()
             .push(padded_control(fields))
-            .push(padded_control(
+            .push(padded_control(widget::Container::new(
                 Scrollable::new(chat).id(self.chat_id.clone()),
-            ))
+            )))
             .height(Length::Fill)
             .into()
     }
@@ -291,14 +291,13 @@ impl Window {
     }
 
     fn bot_bubble(&self, message: String) -> Element<Message> {
-        let line = widget::row().push(widget::text(message.to_owned()));
+        let text = widget::text(message);
 
-        let ai = widget::Container::new(line)
+        let ai = widget::Container::new(text)
             .padding(12)
             .style(theme::Container::List);
 
-        let ai_col = widget::column().push(ai);
-        let content = widget::column().push(ai_col).spacing(10);
+        let content = widget::column().push(ai);
 
         widget::Container::new(content).width(Length::Fill).into()
     }
@@ -312,8 +311,7 @@ impl Window {
         .width(Length::Fill)
         .align_x(Horizontal::Right);
 
-        let user_col = widget::column().push(user);
-        let content = widget::column().push(user_col);
+        let content = widget::column().push(user);
 
         widget::Container::new(content).width(Length::Fill).into()
     }
