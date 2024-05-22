@@ -49,6 +49,7 @@ pub enum Message {
     ClearChat,
     BotEvent(stream::Event),
     ToggleContext,
+    StopBot,
 }
 
 pub struct Window {
@@ -206,6 +207,7 @@ impl Application for Window {
                 self.conversation.clear();
             }
             Message::ToggleContext => self.keep_context = !self.keep_context,
+            Message::StopBot => self.last_id += 1,
         };
 
         Command::none()
@@ -250,9 +252,14 @@ impl Window {
         let clear_chat =
             widget::button(widget::text(fl!("clear-chat"))).on_press(Message::ClearChat);
 
+        let stop_bot = widget::button(widget::text("Stop"))
+            .on_press(Message::StopBot)
+            .style(theme::Button::Destructive);
+
         let fields = widget::row()
             .push(prompt_input)
             .push(clear_chat)
+            .push(stop_bot)
             .spacing(10);
 
         let mut chat = widget::column().spacing(10).width(Length::Fill);
