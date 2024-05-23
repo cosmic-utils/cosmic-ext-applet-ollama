@@ -23,6 +23,9 @@ enum-iterator = "2.1.0"
 async-stream = "0.3.5"
 futures = "0.3.30"
 bytes = "1.6.0"
+ron = "0.8.1"
+dirs = "5.0.1"
+chrono = "0.4.38"
 
 [dependencies.libcosmic]
 git = "https://github.com/pop-os/libcosmic"
