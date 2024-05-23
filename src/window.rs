@@ -18,18 +18,13 @@ use cosmic::{
 use enum_iterator::all;
 
 use crate::{
+    chat::{Conversation, Text},
     fl,
     models::{is_installed, Models},
     stream,
 };
 
-const ID: &'static str = "io.github.elevenhsoft.CosmicAppletOllama";
-
-#[derive(Debug, Clone)]
-pub enum Conversation {
-    User(String),
-    Bot(String),
-}
+const ID: &str = "io.github.elevenhsoft.CosmicAppletOllama";
 
 #[derive(Debug, Clone)]
 pub enum Pages {
@@ -57,7 +52,7 @@ pub struct Window {
     popup: Option<Id>,
     page: Pages,
     prompt: String,
-    conversation: Vec<Conversation>,
+    conversation: Conversation,
     bot_response: String,
     system_messages: Vec<String>,
     models: Vec<Models>,
@@ -109,7 +104,7 @@ impl Application for Window {
                 popup: None,
                 page: Pages::Chat,
                 prompt: String::new(),
-                conversation: Vec::new(),
+                conversation: Conversation::new(),
                 bot_response: String::new(),
                 system_messages,
                 models,
@@ -160,8 +155,7 @@ impl Application for Window {
             }
             Message::EnterPrompt(prompt) => self.prompt = prompt,
             Message::SendPrompt => {
-                self.conversation
-                    .push(Conversation::User(self.prompt.clone()));
+                self.conversation.push(Text::User(self.prompt.clone()));
                 self.last_id += 1;
             }
             Message::BotEvent(ev) => match ev {
@@ -188,8 +182,7 @@ impl Application for Window {
                     return snap_to(self.chat_id.clone(), RelativeOffset::END);
                 }
                 stream::Event::Done => {
-                    self.conversation
-                        .push(Conversation::Bot(self.bot_response.clone()));
+                    self.conversation.push(Text::Bot(self.bot_response.clone()));
                     self.bot_response.clear();
                 }
             },
@@ -204,7 +197,7 @@ impl Application for Window {
             Message::ClearChat => {
                 self.prompt.clear();
                 self.system_messages.clear();
-                self.conversation.clear();
+                self.conversation = Conversation::new();
             }
             Message::ToggleContext => self.keep_context = !self.keep_context,
             Message::StopBot => self.last_id += 1,
@@ -264,7 +257,7 @@ impl Window {
 
         let mut chat = widget::column().spacing(10).width(Length::Fill);
 
-        chat = chat.push(self.chat_messages(self.conversation.clone()));
+        chat = chat.push(self.chat_messages(&self.conversation));
 
         chat = chat.push(self.bot_bubble(if self.bot_response.is_empty() {
             String::from("...")
@@ -322,19 +315,19 @@ impl Window {
         widget::Container::new(content).width(Length::Fill).into()
     }
 
-    fn chat_messages(&self, conv: Vec<Conversation>) -> Element<Message> {
+    fn chat_messages(&self, conv: &Conversation) -> Element<Message> {
         let mut content = widget::column().spacing(20);
 
-        for c in conv {
+        for c in &conv.messages {
             match c {
-                Conversation::User(text) => {
+                Text::User(text) => {
                     if !text.is_empty() {
-                        content = content.push(self.user_bubble(text))
+                        content = content.push(self.user_bubble(text.clone()))
                     }
                 }
-                Conversation::Bot(text) => {
+                Text::Bot(text) => {
                     if !text.is_empty() {
-                        content = content.push(self.bot_bubble(text))
+                        content = content.push(self.bot_bubble(text.clone()))
                     }
                 }
             }

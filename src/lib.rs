@@ -1,3 +1,4 @@
+mod chat;
 mod localize;
 mod models;
 mod stream;
