@@ -18,7 +18,7 @@ use cosmic::{
 use enum_iterator::all;
 
 use crate::{
-    chat::{Conversation, Text},
+    chat::{load_conversation, read_conversation_files, Conversation, Text},
     fl,
     models::{is_installed, Models},
     stream,
@@ -46,6 +46,8 @@ pub enum Message {
     ToggleContext,
     StopBot,
     SaveConversation,
+    SelectedConversation(usize),
+    LoadConversation,
 }
 
 pub struct Window {
@@ -63,6 +65,8 @@ pub struct Window {
     chat_id: id::Id,
     keep_context: bool,
     context: Option<Vec<u64>>,
+    saved_conversations: Vec<String>,
+    selected_saved_conv: Option<usize>,
 }
 
 impl Application for Window {
@@ -115,6 +119,8 @@ impl Application for Window {
                 chat_id: id::Id::new("chat"),
                 keep_context: true,
                 context: None,
+                saved_conversations: Vec::new(),
+                selected_saved_conv: Some(0),
             },
             Command::none(),
         )
@@ -133,7 +139,11 @@ impl Application for Window {
     fn update(&mut self, message: Message) -> Command<CosmicMessage<Message>> {
         match message {
             Message::ChatPage => self.page = Pages::Chat,
-            Message::SettingsPage => self.page = Pages::Settings,
+            Message::SettingsPage => {
+                self.page = Pages::Settings;
+
+                self.saved_conversations = read_conversation_files().unwrap();
+            }
             Message::PopupClosed(id) => {
                 if self.popup.as_ref() == Some(&id) {
                     self.popup = None;
@@ -204,6 +214,14 @@ impl Application for Window {
             Message::StopBot => self.last_id += 1,
             Message::SaveConversation => {
                 let _ = self.conversation.save_to_file();
+            }
+            Message::SelectedConversation(index) => {
+                self.selected_saved_conv = Some(index);
+            }
+            Message::LoadConversation => {
+                self.conversation = load_conversation(
+                    self.saved_conversations[self.selected_saved_conv.unwrap()].clone(),
+                );
             }
         };
 
@@ -283,14 +301,30 @@ impl Window {
     }
 
     fn settings_view(&self) -> Element<Message> {
+        let convs_dropdown = widget::dropdown(
+            &self.saved_conversations,
+            self.selected_saved_conv,
+            Message::SelectedConversation,
+        )
+        .width(Length::Fill);
+
+        let load_conv = widget::button(widget::text(fl!("load-conversation")))
+            .on_press(Message::LoadConversation);
+
         let save_conv = widget::button(widget::text(fl!("save-conversation")))
             .on_press(Message::SaveConversation);
+
+        let conv_row = widget::row()
+            .push(convs_dropdown)
+            .push(load_conv)
+            .push(save_conv)
+            .spacing(10);
 
         let context_toggle = widget::toggler(fl!("keep-context"), self.keep_context, |_| {
             Message::ToggleContext
         });
         let content = widget::column()
-            .push(save_conv)
+            .push(conv_row)
             .push(context_toggle)
             .spacing(20);
 

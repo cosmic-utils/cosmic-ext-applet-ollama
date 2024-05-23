@@ -9,3 +9,4 @@ chat = Czat
 settings = Ustawienia
 keep-context= Pamiętaj kontekst
 save-conversation = Zapisz konwersacje
+load-conversation = Wczytaj konwersacje

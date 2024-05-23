@@ -9,3 +9,4 @@ chat = Chat
 settings = Settings
 keep-context= Keep context
 save-conversation = Save conversation
+load-conversation = Load conversation
