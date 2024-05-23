@@ -8,3 +8,4 @@ clear-chat = Clear chat
 chat = Chat
 settings = Settings
 keep-context= Keep context
+save-conversation = Save conversation

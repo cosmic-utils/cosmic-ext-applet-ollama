@@ -45,6 +45,7 @@ pub enum Message {
     BotEvent(stream::Event),
     ToggleContext,
     StopBot,
+    SaveConversation,
 }
 
 pub struct Window {
@@ -201,6 +202,9 @@ impl Application for Window {
             }
             Message::ToggleContext => self.keep_context = !self.keep_context,
             Message::StopBot => self.last_id += 1,
+            Message::SaveConversation => {
+                let _ = self.conversation.save_to_file();
+            }
         };
 
         Command::none()
@@ -279,10 +283,16 @@ impl Window {
     }
 
     fn settings_view(&self) -> Element<Message> {
+        let save_conv = widget::button(widget::text(fl!("save-conversation")))
+            .on_press(Message::SaveConversation);
+
         let context_toggle = widget::toggler(fl!("keep-context"), self.keep_context, |_| {
             Message::ToggleContext
         });
-        let content = widget::column().push(context_toggle);
+        let content = widget::column()
+            .push(save_conv)
+            .push(context_toggle)
+            .spacing(20);
 
         widget::Container::new(padded_control(content))
             .height(Length::Fill)
