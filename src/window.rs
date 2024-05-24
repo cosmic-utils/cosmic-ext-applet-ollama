@@ -334,12 +334,15 @@ impl Window {
             .on_submit(Message::SendPrompt)
             .width(Length::Fill);
 
-        let clear_chat =
-            widget::button(widget::text(fl!("clear-chat"))).on_press(Message::ClearChat);
+        let clear_chat = widget::button(widget::icon::from_name("edit-clear-symbolic"))
+            .on_press(Message::ClearChat)
+            .width(42)
+            .height(42);
 
-        let stop_bot = widget::button(widget::text("Stop"))
+        let stop_bot = widget::button(widget::icon::from_name("media-playback-stop-symbolic"))
             .on_press(Message::StopBot)
-            .style(theme::Button::Destructive);
+            .width(42)
+            .height(42);
 
         let fields = widget::row()
             .push(prompt_input)
@@ -497,8 +500,7 @@ impl Window {
             .push(
                 widget::button(widget::text(fl!("chat")))
                     .width(100)
-                    .on_press(Message::ChatPage)
-                    .style(theme::Button::Suggested),
+                    .on_press(Message::ChatPage),
             )
             .push(
                 widget::button(widget::text(fl!("settings")))
