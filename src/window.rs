@@ -36,6 +36,7 @@ pub enum Pages {
 pub enum StreamingRequest {
     Ask,
     AskWithContext,
+    PullModel,
 }
 
 #[derive(Debug, Clone)]
@@ -80,7 +81,9 @@ pub struct Window {
     request: StreamingRequest,
     models_to_pull: Vec<Models>,
     pull_model_index: Option<usize>,
+    pull_this_model: Option<Models>,
     del_model_index: Option<usize>,
+    status_area_status: String,
 }
 
 impl Application for Window {
@@ -140,7 +143,9 @@ impl Application for Window {
                 request: StreamingRequest::AskWithContext,
                 models_to_pull,
                 pull_model_index: Some(0),
+                pull_this_model: None,
                 del_model_index: Some(0),
+                status_area_status: String::new(),
             },
             Command::none(),
         )
@@ -211,6 +216,11 @@ impl Application for Window {
                                 self.context.clone(),
                             )))
                         }
+                        StreamingRequest::PullModel => {
+                            _ = tx.blocking_send(stream::Request::PullModel(
+                                self.pull_this_model.as_ref().unwrap().clone(),
+                            ))
+                        }
                     }
                     self.prompt.clear();
                 }
@@ -223,6 +233,10 @@ impl Application for Window {
                 stream::Event::Done => {
                     self.conversation.push(Text::Bot(self.bot_response.clone()));
                     self.bot_response.clear();
+                    self.status_area_status.clear();
+                }
+                stream::Event::PullResponse(status) => {
+                    self.status_area_status = status.status;
                 }
             },
             Message::ChangeModel(index) => {
@@ -251,8 +265,16 @@ impl Application for Window {
                     self.saved_conversations[self.selected_saved_conv.unwrap()].clone(),
                 );
             }
-            Message::ModelsPullSelector(index) => self.pull_model_index = Some(index),
-            Message::PullModel => println!("pull model"),
+            Message::ModelsPullSelector(index) => {
+                self.pull_model_index = Some(index);
+                self.pull_this_model = Some(self.models_to_pull[index].clone());
+            }
+            Message::PullModel => {
+                if self.pull_this_model.is_some() {
+                    self.last_id += 1;
+                    self.request = StreamingRequest::PullModel;
+                }
+            }
             Message::ModelsDelSelector(index) => self.del_model_index = Some(index),
             Message::DelModel => println!("del model"),
         };
@@ -360,13 +382,25 @@ impl Window {
             .push(save_conv)
             .spacing(10);
 
-        let content = widget::column()
+        let spacer = widget::Space::with_height(Length::Fill);
+
+        let status_area = widget::row()
+            .push(widget::text::monotext("Status: "))
+            .push(widget::text::monotext(self.status_area_status.clone()))
+            .spacing(10);
+
+        let mut content = widget::column()
             .push(context_title)
             .push(context_toggle)
             .push(convs_title)
             .push(conv_row)
             .push(self.manage_models())
+            .push(spacer)
             .spacing(20);
+
+        if !self.status_area_status.is_empty() {
+            content = content.push(status_area);
+        }
 
         widget::Container::new(padded_control(content))
             .height(Length::Fill)
