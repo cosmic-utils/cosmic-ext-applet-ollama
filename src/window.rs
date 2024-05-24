@@ -313,6 +313,20 @@ impl Application for Window {
 
 impl Window {
     fn chat_view(&self) -> Element<Message> {
+        let mut chat = widget::column().spacing(10).width(Length::Fill);
+
+        chat = chat.push(self.chat_messages(&self.conversation));
+
+        chat = chat.push(self.bot_bubble(if self.bot_response.is_empty() {
+            String::from("...")
+        } else {
+            self.bot_response.clone()
+        }));
+
+        for message in &self.system_messages {
+            chat = chat.push(self.system_bubble(message.to_string()))
+        }
+
         let prompt_input = widget::text_input(fl!("prompt-field"), &self.prompt)
             .on_input(Message::EnterPrompt)
             .on_submit(Message::SendPrompt)
@@ -331,25 +345,11 @@ impl Window {
             .push(stop_bot)
             .spacing(10);
 
-        let mut chat = widget::column().spacing(10).width(Length::Fill);
-
-        chat = chat.push(self.chat_messages(&self.conversation));
-
-        chat = chat.push(self.bot_bubble(if self.bot_response.is_empty() {
-            String::from("...")
-        } else {
-            self.bot_response.clone()
-        }));
-
-        for message in &self.system_messages {
-            chat = chat.push(self.system_bubble(message.to_string()))
-        }
-
         widget::column()
+            .push(padded_control(
+                widget::Container::new(Scrollable::new(chat).id(self.chat_id.clone())).height(620),
+            ))
             .push(padded_control(fields))
-            .push(padded_control(widget::Container::new(
-                Scrollable::new(chat).id(self.chat_id.clone()),
-            )))
             .height(Length::Fill)
             .into()
     }
