@@ -5,7 +5,7 @@ use cosmic::{
     iced_futures::MaybeSend,
 };
 use futures::SinkExt;
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
 
@@ -17,6 +17,8 @@ pub enum Event {
     Response(BotResponse),
     PullResponse(PullModelResponse),
     PullDone,
+    RemoveStatus(String),
+    RemovedModel,
     Done,
 }
 
@@ -25,6 +27,7 @@ pub enum Request {
     Ask((Models, String)),
     AskWithContext((Models, String, Option<Vec<u64>>)),
     PullModel(Models),
+    RemoveModel(Models),
 }
 
 pub fn subscription<I: 'static + Hash + Copy + Send + Sync>(
@@ -62,6 +65,9 @@ pub fn service() -> impl Stream<Item = Event> + MaybeSend {
                 }
                 Request::PullModel(model) => {
                     _ = pull_request(model.to_string(), &responses_tx, pull_client).await
+                }
+                Request::RemoveModel(model) => {
+                    _ = remove_request(model.to_string(), &responses_tx).await
                 }
             }
         }
@@ -287,4 +293,48 @@ async fn pull_request<'a>(
     };
 
     client
+}
+
+#[derive(Debug, Serialize)]
+pub struct RemoveModelQuery {
+    name: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct RemoveModel {
+    pub model: String,
+}
+
+impl RemoveModel {
+    pub async fn new(model: String) -> anyhow::Result<(Self, StatusCode)> {
+        let client = Client::new().delete("http://localhost:11434/api/delete");
+
+        let remove_query = RemoveModelQuery { name: model };
+
+        let request = client
+            .json::<RemoveModelQuery>(&remove_query)
+            .send()
+            .await?
+            .status();
+
+        let remove = RemoveModel {
+            model: String::new(),
+        };
+
+        Ok((remove, request))
+    }
+}
+
+async fn remove_request<'a>(model: String, tx: &mpsc::Sender<Event>) -> anyhow::Result<()> {
+    if let Ok((_new_client, status_code)) = RemoveModel::new(model).await {
+        if status_code.is_success() {
+            _ = tx.send(Event::RemoveStatus(String::from("Removed successfully")));
+        } else {
+            _ = tx.send(Event::RemoveStatus(String::from("Can't remove model")));
+        };
+    };
+
+    let _ = tx.send(Event::RemovedModel).await;
+
+    Ok(())
 }

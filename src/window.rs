@@ -39,6 +39,7 @@ pub enum StreamingRequest {
     Ask,
     AskWithContext,
     PullModel,
+    RemoveModel,
 }
 
 #[derive(Debug, Clone)]
@@ -86,6 +87,7 @@ pub struct Window {
     pull_model_index: Option<usize>,
     pull_this_model: Option<Models>,
     del_model_index: Option<usize>,
+    delete_this_model: Option<Models>,
     status_area_status: String,
 }
 
@@ -140,6 +142,7 @@ impl Application for Window {
                 pull_model_index: Some(0),
                 pull_this_model: None,
                 del_model_index: Some(0),
+                delete_this_model: None,
                 status_area_status: String::new(),
             },
             Command::none(),
@@ -216,6 +219,11 @@ impl Application for Window {
                                 self.pull_this_model.as_ref().unwrap().clone(),
                             ))
                         }
+                        StreamingRequest::RemoveModel => {
+                            _ = tx.blocking_send(stream::Request::RemoveModel(
+                                self.delete_this_model.as_ref().unwrap().clone(),
+                            ))
+                        }
                     }
                     self.prompt.clear();
                 }
@@ -235,6 +243,13 @@ impl Application for Window {
                 stream::Event::PullDone => {
                     self.status_area_status.clear();
                     self.models = installed_models();
+                }
+                stream::Event::RemovedModel => {
+                    self.status_area_status.clear();
+                    self.models = installed_models();
+                }
+                stream::Event::RemoveStatus(status) => {
+                    self.status_area_status = status;
                 }
             },
             Message::ChangeModel(index) => {
@@ -280,8 +295,16 @@ impl Application for Window {
                     self.request = StreamingRequest::PullModel;
                 }
             }
-            Message::ModelsDelSelector(index) => self.del_model_index = Some(index),
-            Message::DelModel => println!("del model"),
+            Message::ModelsDelSelector(index) => {
+                self.del_model_index = Some(index);
+                self.delete_this_model = Some(self.models[index].clone());
+            }
+            Message::DelModel => {
+                if self.delete_this_model.is_some() {
+                    self.last_id += 1;
+                    self.request = StreamingRequest::RemoveModel;
+                }
+            }
         };
 
         Command::none()
