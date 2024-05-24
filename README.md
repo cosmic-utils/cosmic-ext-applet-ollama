@@ -1,7 +1,10 @@
 <div align="center">
   <h1>COSMIC Applet for Ollama chat</h1>
   <br>
-  <img alt="chat" src="https://github.com/elevenhsoft/cosmic-applet-ollama/blob/main/screenshots/chat.png" width="280">
+  <div>
+    <img alt="chat" src="https://github.com/elevenhsoft/cosmic-applet-ollama/blob/main/screenshots/chat.png" width="280">
+    <img alt="settings" src="https://github.com/elevenhsoft/cosmic-applet-ollama/blob/main/screenshots/settings.png" width="280">
+  </div>
 </div>
 
 Before using this applet, you must have Ollama installed on your system. To do this, run this in your terminal:
