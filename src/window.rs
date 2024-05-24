@@ -13,7 +13,9 @@ use cosmic::{
         scrollable::{snap_to, RelativeOffset},
         Scrollable,
     },
-    theme, widget, Application, Command, Element,
+    theme,
+    widget::{self, settings},
+    Application, Command, Element,
 };
 use enum_iterator::all;
 
@@ -355,32 +357,55 @@ impl Window {
     }
 
     fn settings_view(&self) -> Element<Message> {
-        let context_title = widget::text::title4("Context");
+        let conv_section = settings::view_section(fl!("conversations"))
+            .add(settings::item(
+                fl!("keep-context"),
+                widget::toggler(None, self.keep_context, |_| Message::ToggleContext),
+            ))
+            .add(settings::item(
+                fl!("select-conversation"),
+                widget::dropdown(
+                    &self.saved_conversations,
+                    self.selected_saved_conv,
+                    Message::SelectedConversation,
+                ),
+            ))
+            .add(settings::item(
+                fl!("load-conversation"),
+                widget::button(widget::text(fl!("load"))).on_press(Message::LoadConversation),
+            ))
+            .add(settings::item(
+                fl!("save-conversation"),
+                widget::button(widget::text(fl!("save"))).on_press(Message::SaveConversation),
+            ));
 
-        let context_toggle = widget::toggler(fl!("keep-context"), self.keep_context, |_| {
-            Message::ToggleContext
-        });
-
-        let convs_title = widget::text::title4("Manage conversations");
-
-        let convs_dropdown = widget::dropdown(
-            &self.saved_conversations,
-            self.selected_saved_conv,
-            Message::SelectedConversation,
-        )
-        .width(Length::Fill);
-
-        let load_conv = widget::button(widget::text(fl!("load-conversation")))
-            .on_press(Message::LoadConversation);
-
-        let save_conv = widget::button(widget::text(fl!("save-conversation")))
-            .on_press(Message::SaveConversation);
-
-        let conv_row = widget::row()
-            .push(convs_dropdown)
-            .push(load_conv)
-            .push(save_conv)
-            .spacing(10);
+        let models_section = settings::view_section(fl!("manage-models"))
+            .add(settings::item_row(vec![
+                widget::dropdown(
+                    &self.models_to_pull,
+                    self.pull_model_index,
+                    Message::ModelsPullSelector,
+                )
+                .width(Length::FillPortion(2))
+                .into(),
+                widget::button(widget::text(fl!("pull-model")))
+                    .on_press(Message::PullModel)
+                    .width(Length::FillPortion(2))
+                    .into(),
+            ]))
+            .add(settings::item_row(vec![
+                widget::dropdown(
+                    &self.models,
+                    self.del_model_index,
+                    Message::ModelsDelSelector,
+                )
+                .width(Length::FillPortion(2))
+                .into(),
+                widget::button(widget::text(fl!("remove-model")))
+                    .on_press(Message::DelModel)
+                    .width(Length::FillPortion(2))
+                    .into(),
+            ]));
 
         let spacer = widget::Space::with_height(Length::Fill);
 
@@ -390,11 +415,8 @@ impl Window {
             .spacing(10);
 
         let mut content = widget::column()
-            .push(context_title)
-            .push(context_toggle)
-            .push(convs_title)
-            .push(conv_row)
-            .push(self.manage_models())
+            .push(conv_section)
+            .push(models_section)
             .push(spacer)
             .spacing(20);
 
@@ -405,50 +427,6 @@ impl Window {
         widget::Container::new(padded_control(content))
             .height(Length::Fill)
             .into()
-    }
-
-    fn manage_models(&self) -> Element<Message> {
-        let header = widget::text::title4("Manage models");
-
-        let models_dropdown = widget::dropdown(
-            &self.models_to_pull,
-            self.pull_model_index,
-            Message::ModelsPullSelector,
-        )
-        .width(Length::FillPortion(3));
-
-        let pull_model = widget::button("Pull model")
-            .on_press(Message::PullModel)
-            .width(Length::FillPortion(1));
-
-        let del_models_dropdown = widget::dropdown(
-            &self.models,
-            self.del_model_index,
-            Message::ModelsDelSelector,
-        )
-        .width(Length::FillPortion(3));
-
-        let del_model = widget::button("Remove model")
-            .on_press(Message::DelModel)
-            .width(Length::FillPortion(1));
-
-        let content = widget::column()
-            .push(header)
-            .push(
-                widget::row()
-                    .push(models_dropdown)
-                    .push(pull_model)
-                    .spacing(10),
-            )
-            .push(
-                widget::row()
-                    .push(del_models_dropdown)
-                    .push(del_model)
-                    .spacing(10),
-            )
-            .spacing(20);
-
-        widget::Container::new(content).into()
     }
 
     fn bot_bubble(&self, message: String) -> Element<Message> {
