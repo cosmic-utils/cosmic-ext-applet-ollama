@@ -378,7 +378,7 @@ impl Window {
 
         widget::column()
             .push(padded_control(
-                widget::Container::new(Scrollable::new(chat).id(self.chat_id.clone())).height(620),
+                widget::Container::new(Scrollable::new(chat).id(self.chat_id.clone())).height(580),
             ))
             .push(padded_control(fields))
             .height(Length::Fill)
@@ -526,22 +526,20 @@ impl Window {
     }
 
     fn menu_bar(&self) -> Element<Message> {
-        widget::row()
-            .push(
+        settings::view_section("")
+            .add(settings::item_row(vec![
                 widget::button(widget::text(fl!("chat")))
                     .width(100)
-                    .on_press(Message::ChatPage),
-            )
-            .push(
+                    .on_press(Message::ChatPage)
+                    .into(),
                 widget::button(widget::text(fl!("settings")))
                     .width(100)
-                    .on_press(Message::SettingsPage),
-            )
-            .push(
+                    .on_press(Message::SettingsPage)
+                    .into(),
                 widget::dropdown(&self.models, self.model_index, Message::ChangeModel)
-                    .width(Length::Fill),
-            )
-            .spacing(10)
+                    .width(Length::Fill)
+                    .into(),
+            ]))
             .into()
     }
 }
