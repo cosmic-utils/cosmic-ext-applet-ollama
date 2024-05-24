@@ -33,6 +33,12 @@ pub enum Pages {
 }
 
 #[derive(Debug, Clone)]
+pub enum StreamingRequest {
+    Ask,
+    AskWithContext,
+}
+
+#[derive(Debug, Clone)]
 pub enum Message {
     ChatPage,
     SettingsPage,
@@ -48,6 +54,10 @@ pub enum Message {
     SaveConversation,
     SelectedConversation(usize),
     LoadConversation,
+    ModelsPullSelector(usize),
+    PullModel,
+    ModelsDelSelector(usize),
+    DelModel,
 }
 
 pub struct Window {
@@ -67,6 +77,10 @@ pub struct Window {
     context: Option<Vec<u64>>,
     saved_conversations: Vec<String>,
     selected_saved_conv: Option<usize>,
+    request: StreamingRequest,
+    models_to_pull: Vec<Models>,
+    pull_model_index: Option<usize>,
+    del_model_index: Option<usize>,
 }
 
 impl Application for Window {
@@ -103,6 +117,8 @@ impl Application for Window {
             }
         }
 
+        let models_to_pull = all::<Models>().collect::<Vec<_>>();
+
         (
             Self {
                 core,
@@ -121,6 +137,10 @@ impl Application for Window {
                 context: None,
                 saved_conversations: Vec::new(),
                 selected_saved_conv: Some(0),
+                request: StreamingRequest::AskWithContext,
+                models_to_pull,
+                pull_model_index: Some(0),
+                del_model_index: Some(0),
             },
             Command::none(),
         )
@@ -168,22 +188,30 @@ impl Application for Window {
             Message::SendPrompt => {
                 self.conversation.push(Text::User(self.prompt.clone()));
                 self.last_id += 1;
+
+                if !self.keep_context {
+                    self.request = StreamingRequest::Ask
+                } else {
+                    self.request = StreamingRequest::AskWithContext
+                }
             }
             Message::BotEvent(ev) => match ev {
                 stream::Event::Ready(tx) => {
-                    if !self.keep_context {
-                        _ = tx.blocking_send(stream::Request::Ask((
-                            self.selected_model.clone(),
-                            self.prompt.clone(),
-                        )));
-                    } else {
-                        _ = tx.blocking_send(stream::Request::AskWithContext((
-                            self.selected_model.clone(),
-                            self.prompt.clone(),
-                            self.context.clone(),
-                        )));
+                    match self.request {
+                        StreamingRequest::Ask => {
+                            _ = tx.blocking_send(stream::Request::Ask((
+                                self.selected_model.clone(),
+                                self.prompt.clone(),
+                            )))
+                        }
+                        StreamingRequest::AskWithContext => {
+                            _ = tx.blocking_send(stream::Request::AskWithContext((
+                                self.selected_model.clone(),
+                                self.prompt.clone(),
+                                self.context.clone(),
+                            )))
+                        }
                     }
-
                     self.prompt.clear();
                 }
                 stream::Event::Response(message) => {
@@ -223,6 +251,10 @@ impl Application for Window {
                     self.saved_conversations[self.selected_saved_conv.unwrap()].clone(),
                 );
             }
+            Message::ModelsPullSelector(index) => self.pull_model_index = Some(index),
+            Message::PullModel => println!("pull model"),
+            Message::ModelsDelSelector(index) => self.del_model_index = Some(index),
+            Message::DelModel => println!("del model"),
         };
 
         Command::none()
@@ -301,6 +333,14 @@ impl Window {
     }
 
     fn settings_view(&self) -> Element<Message> {
+        let context_title = widget::text::title4("Context");
+
+        let context_toggle = widget::toggler(fl!("keep-context"), self.keep_context, |_| {
+            Message::ToggleContext
+        });
+
+        let convs_title = widget::text::title4("Manage conversations");
+
         let convs_dropdown = widget::dropdown(
             &self.saved_conversations,
             self.selected_saved_conv,
@@ -320,17 +360,61 @@ impl Window {
             .push(save_conv)
             .spacing(10);
 
-        let context_toggle = widget::toggler(fl!("keep-context"), self.keep_context, |_| {
-            Message::ToggleContext
-        });
         let content = widget::column()
-            .push(conv_row)
+            .push(context_title)
             .push(context_toggle)
+            .push(convs_title)
+            .push(conv_row)
+            .push(self.manage_models())
             .spacing(20);
 
         widget::Container::new(padded_control(content))
             .height(Length::Fill)
             .into()
+    }
+
+    fn manage_models(&self) -> Element<Message> {
+        let header = widget::text::title4("Manage models");
+
+        let models_dropdown = widget::dropdown(
+            &self.models_to_pull,
+            self.pull_model_index,
+            Message::ModelsPullSelector,
+        )
+        .width(Length::FillPortion(3));
+
+        let pull_model = widget::button("Pull model")
+            .on_press(Message::PullModel)
+            .width(Length::FillPortion(1));
+
+        let del_models_dropdown = widget::dropdown(
+            &self.models,
+            self.del_model_index,
+            Message::ModelsDelSelector,
+        )
+        .width(Length::FillPortion(3));
+
+        let del_model = widget::button("Remove model")
+            .on_press(Message::DelModel)
+            .width(Length::FillPortion(1));
+
+        let content = widget::column()
+            .push(header)
+            .push(
+                widget::row()
+                    .push(models_dropdown)
+                    .push(pull_model)
+                    .spacing(10),
+            )
+            .push(
+                widget::row()
+                    .push(del_models_dropdown)
+                    .push(del_model)
+                    .spacing(10),
+            )
+            .spacing(20);
+
+        widget::Container::new(content).into()
     }
 
     fn bot_bubble(&self, message: String) -> Element<Message> {
