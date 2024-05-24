@@ -57,6 +57,7 @@ pub enum Message {
     SaveConversation,
     SelectedConversation(usize),
     LoadConversation,
+    RemoveConversation,
     ModelsPullSelector(usize),
     PullModel,
     ModelsDelSelector(usize),
@@ -267,6 +268,13 @@ impl Application for Window {
                     self.saved_conversations[self.selected_saved_conv.unwrap()].clone(),
                 );
             }
+            Message::RemoveConversation => {
+                let _ = self
+                    .conversation
+                    .remove(self.saved_conversations[self.selected_saved_conv.unwrap()].clone());
+
+                self.saved_conversations = read_conversation_files().unwrap();
+            }
             Message::ModelsPullSelector(index) => {
                 self.pull_model_index = Some(index);
                 self.pull_this_model = Some(self.models_to_pull[index].clone());
@@ -380,6 +388,10 @@ impl Window {
             .add(settings::item(
                 fl!("save-conversation"),
                 widget::button(widget::text(fl!("save"))).on_press(Message::SaveConversation),
+            ))
+            .add(settings::item(
+                fl!("remove-conversation"),
+                widget::button(widget::text(fl!("remove"))).on_press(Message::RemoveConversation),
             ));
 
         let models_section = settings::view_section(fl!("manage-models"))

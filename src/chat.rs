@@ -51,6 +51,17 @@ impl Conversation {
 
         Ok(())
     }
+
+    pub fn remove(&self, filename: String) -> anyhow::Result<()> {
+        let data_path = dirs::data_dir()
+            .expect("xdg-data not found")
+            .join("cosmic-applet-ollama")
+            .join(format!("{}.ron", &filename));
+
+        fs::remove_file(data_path)?;
+
+        Ok(())
+    }
 }
 
 pub fn read_conversation_files() -> anyhow::Result<Vec<String>> {
