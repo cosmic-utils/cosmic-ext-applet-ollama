@@ -16,6 +16,7 @@ pub enum Event {
     Ready(mpsc::Sender<Request>),
     Response(BotResponse),
     PullResponse(PullModelResponse),
+    PullDone,
     Done,
 }
 
@@ -267,7 +268,7 @@ async fn pull_request<'a>(
                                 let _res = tx.send(Event::PullResponse(res)).await;
                             }
                         }
-                        let _ = tx.send(Event::Done).await;
+                        let _ = tx.send(Event::PullDone).await;
                     });
 
                     let killswitch = Box::pin(async move {

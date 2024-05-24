@@ -22,7 +22,7 @@ use enum_iterator::all;
 use crate::{
     chat::{load_conversation, read_conversation_files, Conversation, Text},
     fl,
-    models::{is_installed, Models},
+    models::{installed_models, is_installed, Models},
     stream,
 };
 
@@ -114,15 +114,7 @@ impl Application for Window {
         cosmic::iced::Command<cosmic::app::Message<Self::Message>>,
     ) {
         let system_messages = Vec::new();
-
-        let mut models: Vec<Models> = Vec::new();
-
-        for model in all::<Models>().collect::<Vec<_>>() {
-            if is_installed(&model.clone()) {
-                models.push(model);
-            }
-        }
-
+        let models: Vec<Models> = installed_models();
         let models_to_pull = all::<Models>().collect::<Vec<_>>();
 
         (
@@ -236,10 +228,13 @@ impl Application for Window {
                 stream::Event::Done => {
                     self.conversation.push(Text::Bot(self.bot_response.clone()));
                     self.bot_response.clear();
-                    self.status_area_status.clear();
                 }
                 stream::Event::PullResponse(status) => {
                     self.status_area_status = status.status;
+                }
+                stream::Event::PullDone => {
+                    self.status_area_status.clear();
+                    self.models = installed_models();
                 }
             },
             Message::ChangeModel(index) => {

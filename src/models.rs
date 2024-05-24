@@ -1,4 +1,4 @@
-use enum_iterator::Sequence;
+use enum_iterator::{all, Sequence};
 
 #[derive(Debug, Clone, PartialEq, Sequence)]
 pub enum Models {
@@ -62,4 +62,16 @@ pub fn is_installed(model: &Models) -> bool {
     }
 
     false
+}
+
+pub fn installed_models() -> Vec<Models> {
+    let mut models: Vec<Models> = Vec::new();
+
+    for model in all::<Models>().collect::<Vec<_>>() {
+        if is_installed(&model.clone()) {
+            models.push(model);
+        }
+    }
+
+    models
 }
