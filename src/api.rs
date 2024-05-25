@@ -158,3 +158,41 @@ impl RemoveModel {
         Ok((remove, request))
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Tags {
+    pub models: Vec<Model>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Model {
+    pub name: Option<String>,
+    pub modified_at: Option<String>,
+    pub size: Option<u64>,
+    pub digest: Option<String>,
+    pub details: Option<ModelDetails>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ModelDetails {
+    pub format: Option<String>,
+    pub family: Option<String>,
+    pub families: Option<Vec<String>>,
+    pub parameter_size: Option<String>,
+    pub quantization_level: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct ListModels {
+    pub result: anyhow::Result<Tags, reqwest::Error>,
+}
+
+impl ListModels {
+    pub fn new() -> Self {
+        let client = reqwest::blocking::Client::new().get("http://localhost:11434/api/tags");
+
+        let request = client.send().unwrap().json::<Tags>();
+
+        Self { result: request }
+    }
+}

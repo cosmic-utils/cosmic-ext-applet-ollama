@@ -1,5 +1,7 @@
 use enum_iterator::{all, Sequence};
 
+use crate::api::ListModels;
+
 #[derive(Debug, Clone, PartialEq, Sequence)]
 pub enum Models {
     Llama3,
@@ -55,10 +57,15 @@ impl std::fmt::Display for Models {
 }
 
 pub fn is_installed(model: &Models) -> bool {
-    if let Ok(output) = std::process::Command::new("ollama").arg("list").output() {
-        let output = String::from_utf8_lossy(&output.stdout);
-
-        return output.to_lowercase().contains(&model.to_string());
+    let tags = ListModels::new();
+    if let Ok(response) = tags.result {
+        return response.models.iter().any(|field| {
+            if let Some(name) = &field.name {
+                name.contains(&model.to_string())
+            } else {
+                false
+            }
+        });
     }
 
     false
