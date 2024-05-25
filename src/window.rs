@@ -378,7 +378,8 @@ impl Window {
 
         widget::column()
             .push(padded_control(
-                widget::Container::new(Scrollable::new(chat).id(self.chat_id.clone())).height(580),
+                widget::Container::new(Scrollable::new(chat).id(self.chat_id.clone()))
+                    .height(Length::Fill),
             ))
             .push(padded_control(fields))
             .height(Length::Fill)
@@ -401,15 +402,15 @@ impl Window {
             ))
             .add(settings::item(
                 fl!("load-conversation"),
-                widget::button(widget::text(fl!("load"))).on_press(Message::LoadConversation),
+                widget::button::standard(fl!("load")).on_press(Message::LoadConversation),
             ))
             .add(settings::item(
                 fl!("save-conversation"),
-                widget::button(widget::text(fl!("save"))).on_press(Message::SaveConversation),
+                widget::button::standard(fl!("save")).on_press(Message::SaveConversation),
             ))
             .add(settings::item(
                 fl!("remove-conversation"),
-                widget::button(widget::text(fl!("remove"))).on_press(Message::RemoveConversation),
+                widget::button::standard(fl!("remove")).on_press(Message::RemoveConversation),
             ));
 
         let models_section = settings::view_section(fl!("manage-models"))
@@ -419,11 +420,10 @@ impl Window {
                     self.pull_model_index,
                     Message::ModelsPullSelector,
                 )
-                .width(Length::FillPortion(2))
+                .width(Length::Fill)
                 .into(),
-                widget::button(widget::text(fl!("pull-model")))
+                widget::button::standard(fl!("pull-model"))
                     .on_press(Message::PullModel)
-                    .width(Length::FillPortion(2))
                     .into(),
             ]))
             .add(settings::item_row(vec![
@@ -432,11 +432,10 @@ impl Window {
                     self.del_model_index,
                     Message::ModelsDelSelector,
                 )
-                .width(Length::FillPortion(2))
+                .width(Length::Fill)
                 .into(),
-                widget::button(widget::text(fl!("remove-model")))
+                widget::button::standard(fl!("remove-model"))
                     .on_press(Message::DelModel)
-                    .width(Length::FillPortion(2))
                     .into(),
             ]));
 
@@ -528,11 +527,10 @@ impl Window {
     fn menu_bar(&self) -> Element<Message> {
         settings::view_section("")
             .add(settings::item_row(vec![
-                widget::button(widget::text(fl!("chat")))
-                    .width(100)
+                widget::button::standard(fl!("chat"))
                     .on_press(Message::ChatPage)
                     .into(),
-                widget::button(widget::text(fl!("settings")))
+                widget::button::standard(fl!("settings"))
                     .width(100)
                     .on_press(Message::SettingsPage)
                     .into(),
