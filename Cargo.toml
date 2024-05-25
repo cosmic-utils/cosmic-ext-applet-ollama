@@ -30,11 +30,4 @@ chrono = "0.4.38"
 [dependencies.libcosmic]
 git = "https://github.com/pop-os/libcosmic"
 default-features = false
-features = [
-	"applet",
-	"applet-token",
-	"tokio",
-	"wayland",
-	"desktop",
-	"dbus-config",
-]
+features = ["applet", "tokio", "wayland"]
