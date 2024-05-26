@@ -321,8 +321,8 @@ impl Application for Window {
                 return Command::perform(
                     async move {
                         let result = SelectedFiles::open_file()
-                            .title("open a file to read")
-                            .accept_label("read")
+                            .title("Open multiple images")
+                            .accept_label("Attach")
                             .modal(true)
                             .multiple(true)
                             .choice(
