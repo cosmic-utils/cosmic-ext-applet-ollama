@@ -26,6 +26,8 @@ bytes = "1.6.0"
 ron = "0.8.1"
 dirs = "5.0.1"
 chrono = "0.4.38"
+ashpd = { version = "0.8.1", features = ["wayland"] }
+base64 = "0.22.1"
 
 [dependencies.libcosmic]
 git = "https://github.com/pop-os/libcosmic"
