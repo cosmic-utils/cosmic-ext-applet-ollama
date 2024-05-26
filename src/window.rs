@@ -411,20 +411,38 @@ impl Window {
             .on_submit(Message::SendPrompt)
             .width(Length::Fill);
 
-        let open_images = widget::button(widget::icon::from_name("insert-image-symbolic"))
-            .on_press(Message::OpenImages)
-            .width(42)
-            .height(42);
+        let open_images = widget::button(
+            widget::Container::new(widget::icon::from_name("insert-image-symbolic"))
+                .width(32)
+                .height(32)
+                .center_x()
+                .center_y(),
+        )
+        .on_press(Message::OpenImages)
+        .width(42)
+        .height(42);
 
-        let clear_chat = widget::button(widget::icon::from_name("edit-clear-symbolic"))
-            .on_press(Message::ClearChat)
-            .width(42)
-            .height(42);
+        let clear_chat = widget::button(
+            widget::Container::new(widget::icon::from_name("edit-clear-symbolic"))
+                .width(32)
+                .height(32)
+                .center_x()
+                .center_y(),
+        )
+        .on_press(Message::ClearChat)
+        .width(42)
+        .height(42);
 
-        let stop_bot = widget::button(widget::icon::from_name("media-playback-stop-symbolic"))
-            .on_press(Message::StopBot)
-            .width(42)
-            .height(42);
+        let stop_bot = widget::button(
+            widget::Container::new(widget::icon::from_name("media-playback-stop-symbolic"))
+                .width(32)
+                .height(32)
+                .center_x()
+                .center_y(),
+        )
+        .on_press(Message::StopBot)
+        .width(42)
+        .height(42);
 
         let fields = widget::row()
             .push(prompt_input)
