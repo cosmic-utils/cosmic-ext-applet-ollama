@@ -1,3 +1,4 @@
+use base64::prelude::*;
 use chrono::Local;
 use ron::{
     from_str,
@@ -6,13 +7,47 @@ use ron::{
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{self, File},
-    io::Write,
+    io::{Read, Write},
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Text {
-    User(String),
-    Bot(String),
+    User(MessageContent),
+    Bot(MessageContent),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum MessageContent {
+    Text(String),
+    Image(ImageAttachment),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ImageAttachment {
+    Svg(Image),
+    Raster(Image),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Image {
+    pub base64: String,
+    #[serde(skip)]
+    pub data: bytes::Bytes,
+}
+
+impl Image {
+    pub fn new(path: &str) -> Self {
+        let mut file = File::open(path).expect("Failed to open file");
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer).expect("Failed to read file");
+
+        let data = bytes::Bytes::from(buffer);
+
+        Self {
+            base64: BASE64_STANDARD.encode(&data),
+            data,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]

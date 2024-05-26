@@ -1,3 +1,4 @@
+use ashpd::desktop::file_chooser::{Choice, FileFilter, SelectedFiles};
 use cosmic::{
     app::{Core, Message as CosmicMessage},
     applet::padded_control,
@@ -20,7 +21,10 @@ use cosmic::{
 use enum_iterator::all;
 
 use crate::{
-    chat::{load_conversation, read_conversation_files, Conversation, Text},
+    chat::{
+        load_conversation, read_conversation_files, Conversation, Image, ImageAttachment,
+        MessageContent, Text,
+    },
     fl,
     models::{installed_models, is_installed, Models},
     stream,
@@ -63,6 +67,8 @@ pub enum Message {
     PullModel,
     ModelsDelSelector(usize),
     DelModel,
+    OpenImages,
+    ImagesResult(Vec<Image>),
 }
 
 pub struct Window {
@@ -80,6 +86,7 @@ pub struct Window {
     chat_id: id::Id,
     keep_context: bool,
     context: Option<Vec<u64>>,
+    images: Vec<String>,
     saved_conversations: Vec<String>,
     selected_saved_conv: Option<usize>,
     request: StreamingRequest,
@@ -135,6 +142,7 @@ impl Application for Window {
                 chat_id: id::Id::new("chat"),
                 keep_context: true,
                 context: None,
+                images: Vec::new(),
                 saved_conversations: Vec::new(),
                 selected_saved_conv: Some(0),
                 request: StreamingRequest::AskWithContext,
@@ -189,7 +197,8 @@ impl Application for Window {
             }
             Message::EnterPrompt(prompt) => self.prompt = prompt,
             Message::SendPrompt => {
-                self.conversation.push(Text::User(self.prompt.clone()));
+                self.conversation
+                    .push(Text::User(MessageContent::Text(self.prompt.clone())));
                 self.last_id += 1;
 
                 if !self.keep_context {
@@ -205,12 +214,14 @@ impl Application for Window {
                             _ = tx.blocking_send(stream::Request::Ask((
                                 self.selected_model.clone(),
                                 self.prompt.clone(),
+                                self.images.clone(),
                             )))
                         }
                         StreamingRequest::AskWithContext => {
                             _ = tx.blocking_send(stream::Request::AskWithContext((
                                 self.selected_model.clone(),
                                 self.prompt.clone(),
+                                self.images.clone(),
                                 self.context.clone(),
                             )))
                         }
@@ -234,7 +245,8 @@ impl Application for Window {
                     return snap_to(self.chat_id.clone(), RelativeOffset::END);
                 }
                 stream::Event::Done => {
-                    self.conversation.push(Text::Bot(self.bot_response.clone()));
+                    self.conversation
+                        .push(Text::Bot(MessageContent::Text(self.bot_response.clone())));
                     self.bot_response.clear();
                 }
                 stream::Event::PullResponse(status) => {
@@ -305,6 +317,45 @@ impl Application for Window {
                     self.request = StreamingRequest::RemoveModel;
                 }
             }
+            Message::OpenImages => {
+                return Command::perform(
+                    async move {
+                        let result = SelectedFiles::open_file()
+                            .title("open a file to read")
+                            .accept_label("read")
+                            .modal(true)
+                            .multiple(true)
+                            .choice(
+                                Choice::new("encoding", "Encoding", "latin15")
+                                    .insert("utf8", "Unicode (UTF-8)")
+                                    .insert("latin15", "Western"),
+                            )
+                            .choice(Choice::boolean("re-encode", "Re-encode", false))
+                            .filter(FileFilter::new("JPEG Image").glob("*.jpg"))
+                            .filter(FileFilter::new("PNG Image").glob("*.png"))
+                            .send()
+                            .await
+                            .unwrap()
+                            .response()
+                            .unwrap();
+
+                        result
+                            .uris()
+                            .iter()
+                            .map(|file| Image::new(file.path()))
+                            .collect::<Vec<Image>>()
+                    },
+                    |files| cosmic::app::message::app(Message::ImagesResult(files)),
+                );
+            }
+            Message::ImagesResult(result) => {
+                for image in result {
+                    self.images.push(image.base64.clone());
+                    self.conversation.push(Text::User(MessageContent::Image(
+                        ImageAttachment::Raster(image),
+                    )));
+                }
+            }
         };
 
         Command::none()
@@ -360,6 +411,11 @@ impl Window {
             .on_submit(Message::SendPrompt)
             .width(Length::Fill);
 
+        let open_images = widget::button(widget::icon::from_name("insert-image-symbolic"))
+            .on_press(Message::OpenImages)
+            .width(42)
+            .height(42);
+
         let clear_chat = widget::button(widget::icon::from_name("edit-clear-symbolic"))
             .on_press(Message::ClearChat)
             .width(42)
@@ -372,6 +428,7 @@ impl Window {
 
         let fields = widget::row()
             .push(prompt_input)
+            .push(open_images)
             .push(clear_chat)
             .push(stop_bot)
             .spacing(10);
@@ -473,14 +530,32 @@ impl Window {
         widget::Container::new(content).width(Length::Fill).into()
     }
 
-    fn user_bubble(&self, message: String) -> Element<Message> {
-        let user = widget::Container::new(
-            widget::Container::new(widget::text(message))
-                .padding(12)
-                .style(theme::Container::List),
-        )
-        .width(Length::Fill)
-        .align_x(Horizontal::Right);
+    fn user_bubble(
+        &self,
+        message: Option<String>,
+        image: Option<widget::image::Handle>,
+    ) -> Element<Message> {
+        let mut column = widget::column();
+
+        if let Some(mess) = message {
+            column = column.push(
+                widget::Container::new(widget::text(mess))
+                    .padding(12)
+                    .style(theme::Container::List),
+            )
+        }
+
+        if let Some(img) = image {
+            column = column.push(
+                widget::Container::new(widget::image(img))
+                    .padding(12)
+                    .style(theme::Container::List),
+            )
+        }
+
+        let user = widget::Container::new(column)
+            .width(Length::Fill)
+            .align_x(Horizontal::Right);
 
         let content = widget::column().push(user);
 
@@ -492,16 +567,29 @@ impl Window {
 
         for c in &conv.messages {
             match c {
-                Text::User(text) => {
-                    if !text.is_empty() {
-                        content = content.push(self.user_bubble(text.clone()))
+                Text::User(text) => match text {
+                    MessageContent::Text(txt) => {
+                        if !txt.is_empty() {
+                            content = content.push(self.user_bubble(Some(txt.clone()), None))
+                        }
                     }
-                }
-                Text::Bot(text) => {
-                    if !text.is_empty() {
-                        content = content.push(self.bot_bubble(text.clone()))
+                    MessageContent::Image(image) => match image {
+                        ImageAttachment::Svg(_) => todo!(),
+                        ImageAttachment::Raster(raster) => {
+                            let handle = widget::image::Handle::from_memory(raster.data.clone());
+
+                            content = content.push(self.user_bubble(None, Some(handle)));
+                        }
+                    },
+                },
+                Text::Bot(text) => match text {
+                    MessageContent::Text(txt) => {
+                        if !txt.is_empty() {
+                            content = content.push(self.bot_bubble(txt.clone()))
+                        }
                     }
-                }
+                    MessageContent::Image(_) => todo!(),
+                },
             }
         }
 

@@ -7,14 +7,16 @@ struct GenerateNonContext {
     model: String,
     prompt: String,
     stream: bool,
+    images: Vec<String>,
 }
 
 #[derive(Serialize)]
 struct GenerateWithContext {
     model: String,
     prompt: String,
-    stream: bool,
+    images: Vec<String>,
     context: Vec<u64>,
+    stream: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -41,6 +43,7 @@ impl Bot {
     pub async fn new(
         model: String,
         prompt: String,
+        images: Vec<String>,
         context: Option<Vec<u64>>,
     ) -> anyhow::Result<(
         Self,
@@ -52,6 +55,7 @@ impl Bot {
             let no_context_query = GenerateNonContext {
                 model,
                 prompt,
+                images,
                 stream: true,
             };
 
@@ -65,8 +69,9 @@ impl Bot {
             let context_query = GenerateWithContext {
                 model,
                 prompt,
-                stream: true,
+                images,
                 context: context.unwrap(),
+                stream: true,
             };
 
             client

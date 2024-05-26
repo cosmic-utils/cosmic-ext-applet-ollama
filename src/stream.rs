@@ -25,8 +25,8 @@ pub enum Event {
 
 #[derive(Debug, Clone)]
 pub enum Request {
-    Ask((Models, String)),
-    AskWithContext((Models, String, Option<Vec<u64>>)),
+    Ask((Models, String, Vec<String>)),
+    AskWithContext((Models, String, Vec<String>, Option<Vec<u64>>)),
     PullModel(Models),
     RemoveModel(Models),
 }
@@ -58,11 +58,11 @@ pub fn service() -> impl Stream<Item = Event> + MaybeSend {
 
         while let Some(request) = requests_rx.recv().await {
             match request {
-                Request::Ask((model, text)) => {
-                    _ = client_request(model, text, None, &responses_tx, client).await
+                Request::Ask((model, text, images)) => {
+                    _ = client_request(model, text, images, None, &responses_tx, client).await
                 }
-                Request::AskWithContext((model, text, context)) => {
-                    _ = client_request(model, text, context, &responses_tx, client).await
+                Request::AskWithContext((model, text, images, context)) => {
+                    _ = client_request(model, text, images, context, &responses_tx, client).await
                 }
                 Request::PullModel(model) => {
                     _ = pull_request(model.to_string(), &responses_tx, pull_client).await
@@ -86,12 +86,13 @@ pub fn service() -> impl Stream<Item = Event> + MaybeSend {
 async fn client_request<'a>(
     model: Models,
     prompt: String,
+    images: Vec<String>,
     context: Option<Vec<u64>>,
     tx: &mpsc::Sender<Event>,
     client: &'a mut Option<(Bot, oneshot::Sender<()>)>,
 ) -> &'a mut Option<(Bot, oneshot::Sender<()>)> {
     if client.is_none() {
-        *client = match Bot::new(model.to_string(), prompt, context).await {
+        *client = match Bot::new(model.to_string(), prompt, images, context).await {
             Ok((new_client, responses)) => {
                 let tx = tx.clone();
 
