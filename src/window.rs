@@ -1,4 +1,4 @@
-use ashpd::desktop::file_chooser::{Choice, FileFilter, SelectedFiles};
+use ashpd::desktop::file_chooser::{FileFilter, SelectedFiles};
 use cosmic::{
     app::{Core, Message as CosmicMessage},
     applet::padded_control,
@@ -248,6 +248,7 @@ impl Application for Window {
                     self.conversation
                         .push(Text::Bot(MessageContent::Text(self.bot_response.clone())));
                     self.bot_response.clear();
+                    self.images.clear();
                 }
                 stream::Event::PullResponse(status) => {
                     self.status_area_status = status.status;
@@ -325,12 +326,6 @@ impl Application for Window {
                             .accept_label("Attach")
                             .modal(true)
                             .multiple(true)
-                            .choice(
-                                Choice::new("encoding", "Encoding", "latin15")
-                                    .insert("utf8", "Unicode (UTF-8)")
-                                    .insert("latin15", "Western"),
-                            )
-                            .choice(Choice::boolean("re-encode", "Re-encode", false))
                             .filter(FileFilter::new("JPEG Image").glob("*.jpg"))
                             .filter(FileFilter::new("PNG Image").glob("*.png"))
                             .send()
