@@ -120,7 +120,7 @@ impl Application for Window {
         _flags: Self::Flags,
     ) -> (
         Self,
-        cosmic::iced::Command<cosmic::app::Message<Self::Message>>,
+        Command<cosmic::app::Message<Self::Message>>,
     ) {
         let system_messages = Vec::new();
         let models: Vec<Models> = installed_models();
@@ -359,7 +359,7 @@ impl Application for Window {
         Command::none()
     }
 
-    fn view(&self) -> cosmic::prelude::Element<Self::Message> {
+    fn view(&self) -> Element<Self::Message> {
         self.core
             .applet
             .icon_button("io.github.elevenhsoft.CosmicAppletOllama-symbolic")
