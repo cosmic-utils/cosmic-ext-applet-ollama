@@ -294,8 +294,8 @@ impl Application for Window {
                 self.delete_this_model = self.models[index].clone();
             }
             Message::DelModel => {
-                    self.last_id += 1;
-                    self.request = StreamingRequest::RemoveModel;
+                self.last_id += 1;
+                self.request = StreamingRequest::RemoveModel;
             }
             Message::OpenImages => {
                 return Command::perform(
@@ -333,7 +333,7 @@ impl Application for Window {
                     )));
                 }
             }
-            Message::ModelPullInput(model) => self.model_to_pull = model
+            Message::ModelPullInput(model) => self.model_to_pull = model,
         };
 
         Command::none()
@@ -523,36 +523,34 @@ impl Window {
         widget::Container::new(content).width(Length::Fill).into()
     }
 
-    fn user_bubble(
-        &self,
-        message: Option<String>,
-        image: Option<widget::image::Handle>,
-    ) -> Element<Message> {
+    fn user_bubble(&self, message: &MessageContent) -> Element<Message> {
         let mut column = widget::column();
 
-        if let Some(mess) = message {
-            column = column.push(
-                widget::Container::new(widget::text(mess))
-                    .padding(12)
-                    .style(theme::Container::List),
-            )
-        }
+        match message {
+            MessageContent::Image(image) => match image {
+                ImageAttachment::Svg(_) => todo!(),
+                ImageAttachment::Raster(raster) => {
+                    let handle = widget::image::Handle::from_memory(raster.data.clone());
 
-        if let Some(img) = image {
-            column = column.push(
-                widget::Container::new(widget::image(img))
-                    .padding(12)
-                    .style(theme::Container::List),
-            )
-        }
+                    column = column.push(widget::image(handle))
+                }
+            },
+            MessageContent::Text(txt) => {
+                if !txt.is_empty() {
+                    column = column.push(widget::text(txt.clone()))
+                }
+            }
+        };
 
-        let user = widget::Container::new(column)
+        let container = widget::container(column)
+            .padding(12)
+            .style(theme::Container::List);
+
+        let user = widget::Container::new(container)
             .width(Length::Fill)
             .align_x(Horizontal::Right);
 
-        let content = widget::column().push(user);
-
-        widget::Container::new(content).width(Length::Fill).into()
+        widget::Container::new(user).width(Length::Fill).into()
     }
 
     fn chat_messages(&self, conv: &Conversation) -> Element<Message> {
@@ -560,21 +558,7 @@ impl Window {
 
         for c in &conv.messages {
             match c {
-                Text::User(text) => match text {
-                    MessageContent::Text(txt) => {
-                        if !txt.is_empty() {
-                            content = content.push(self.user_bubble(Some(txt.clone()), None))
-                        }
-                    }
-                    MessageContent::Image(image) => match image {
-                        ImageAttachment::Svg(_) => todo!(),
-                        ImageAttachment::Raster(raster) => {
-                            let handle = widget::image::Handle::from_memory(raster.data.clone());
-
-                            content = content.push(self.user_bubble(None, Some(handle)));
-                        }
-                    },
-                },
+                Text::User(message) => content = content.push(self.user_bubble(message)),
                 Text::Bot(text) => match text {
                     MessageContent::Text(txt) => {
                         if !txt.is_empty() {
