@@ -331,14 +331,17 @@ impl Application for Window {
                             .send()
                             .await
                             .unwrap()
-                            .response()
-                            .unwrap();
+                            .response();
 
-                        result
-                            .uris()
-                            .iter()
-                            .map(|file| Image::new(file.path()))
-                            .collect::<Vec<Image>>()
+                        if let Ok(result) = result {
+                            result
+                                .uris()
+                                .iter()
+                                .map(|file| Image::new(file.path()))
+                                .collect::<Vec<Image>>()
+                        } else {
+                            Vec::new()
+                        }
                     },
                     |files| cosmic::app::message::app(Message::ImagesResult(files)),
                 );
