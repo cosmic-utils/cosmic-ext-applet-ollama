@@ -18,7 +18,6 @@ use cosmic::{
     widget::{self, settings},
     Application, Command, Element,
 };
-use enum_iterator::all;
 
 use crate::{
     chat::{
@@ -26,7 +25,7 @@ use crate::{
         MessageContent, Text,
     },
     fl,
-    models::{installed_models, is_installed, Models},
+    models::installed_models,
     stream,
 };
 
@@ -56,6 +55,7 @@ pub enum Message {
     SendPrompt,
     ChangeModel(usize),
     ClearChat,
+    ModelPullInput(String),
     BotEvent(stream::Event),
     ToggleContext,
     StopBot,
@@ -63,7 +63,6 @@ pub enum Message {
     SelectedConversation(usize),
     LoadConversation,
     RemoveConversation,
-    ModelsPullSelector(usize),
     PullModel,
     ModelsDelSelector(usize),
     DelModel,
@@ -79,8 +78,8 @@ pub struct Window {
     conversation: Conversation,
     bot_response: String,
     system_messages: Vec<String>,
-    models: Vec<Models>,
-    selected_model: Models,
+    models: Vec<String>,
+    selected_model: String,
     model_index: Option<usize>,
     last_id: usize,
     chat_id: id::Id,
@@ -90,11 +89,9 @@ pub struct Window {
     saved_conversations: Vec<String>,
     selected_saved_conv: Option<usize>,
     request: StreamingRequest,
-    models_to_pull: Vec<Models>,
-    pull_model_index: Option<usize>,
-    pull_this_model: Option<Models>,
+    model_to_pull: String,
     del_model_index: Option<usize>,
-    delete_this_model: Option<Models>,
+    delete_this_model: String,
     status_area_status: String,
 }
 
@@ -118,13 +115,9 @@ impl Application for Window {
     fn init(
         core: Core,
         _flags: Self::Flags,
-    ) -> (
-        Self,
-        Command<cosmic::app::Message<Self::Message>>,
-    ) {
+    ) -> (Self, Command<cosmic::app::Message<Self::Message>>) {
         let system_messages = Vec::new();
-        let models: Vec<Models> = installed_models();
-        let models_to_pull = all::<Models>().collect::<Vec<_>>();
+        let models: Vec<String> = installed_models();
 
         (
             Self {
@@ -135,8 +128,8 @@ impl Application for Window {
                 conversation: Conversation::new(),
                 bot_response: String::new(),
                 system_messages,
-                models,
-                selected_model: Models::Llama3,
+                models: models.clone(),
+                selected_model: models[0].clone(),
                 model_index: Some(0),
                 last_id: 0,
                 chat_id: id::Id::new("chat"),
@@ -146,11 +139,9 @@ impl Application for Window {
                 saved_conversations: Vec::new(),
                 selected_saved_conv: Some(0),
                 request: StreamingRequest::AskWithContext,
-                models_to_pull,
-                pull_model_index: Some(0),
-                pull_this_model: None,
+                model_to_pull: String::new(),
                 del_model_index: Some(0),
-                delete_this_model: None,
+                delete_this_model: models[0].clone(),
                 status_area_status: String::new(),
             },
             Command::none(),
@@ -227,12 +218,12 @@ impl Application for Window {
                         }
                         StreamingRequest::PullModel => {
                             _ = tx.blocking_send(stream::Request::PullModel(
-                                self.pull_this_model.as_ref().unwrap().clone(),
+                                self.model_to_pull.clone(),
                             ))
                         }
                         StreamingRequest::RemoveModel => {
                             _ = tx.blocking_send(stream::Request::RemoveModel(
-                                self.delete_this_model.as_ref().unwrap().clone(),
+                                self.delete_this_model.clone(),
                             ))
                         }
                     }
@@ -268,10 +259,6 @@ impl Application for Window {
             Message::ChangeModel(index) => {
                 self.model_index = Some(index);
                 self.selected_model = self.models[index].clone();
-
-                if !is_installed(&self.selected_model) {
-                    self.system_messages.push(fl!("model-not-installed"));
-                }
             }
             Message::ClearChat => {
                 self.prompt.clear();
@@ -298,25 +285,17 @@ impl Application for Window {
 
                 self.saved_conversations = read_conversation_files().unwrap();
             }
-            Message::ModelsPullSelector(index) => {
-                self.pull_model_index = Some(index);
-                self.pull_this_model = Some(self.models_to_pull[index].clone());
-            }
             Message::PullModel => {
-                if self.pull_this_model.is_some() {
-                    self.last_id += 1;
-                    self.request = StreamingRequest::PullModel;
-                }
+                self.last_id += 1;
+                self.request = StreamingRequest::PullModel;
             }
             Message::ModelsDelSelector(index) => {
                 self.del_model_index = Some(index);
-                self.delete_this_model = Some(self.models[index].clone());
+                self.delete_this_model = self.models[index].clone();
             }
             Message::DelModel => {
-                if self.delete_this_model.is_some() {
                     self.last_id += 1;
                     self.request = StreamingRequest::RemoveModel;
-                }
             }
             Message::OpenImages => {
                 return Command::perform(
@@ -354,6 +333,7 @@ impl Application for Window {
                     )));
                 }
             }
+            Message::ModelPullInput(model) => self.model_to_pull = model
         };
 
         Command::none()
@@ -488,13 +468,10 @@ impl Window {
 
         let models_section = settings::view_section(fl!("manage-models"))
             .add(settings::item_row(vec![
-                widget::dropdown(
-                    &self.models_to_pull,
-                    self.pull_model_index,
-                    Message::ModelsPullSelector,
-                )
-                .width(Length::Fill)
-                .into(),
+                widget::text_input("llama3:70b", &self.model_to_pull)
+                    .width(Length::Fill)
+                    .on_input(Message::ModelPullInput)
+                    .into(),
                 widget::button::standard(fl!("pull-model"))
                     .on_press(Message::PullModel)
                     .into(),

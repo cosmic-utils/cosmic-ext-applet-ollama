@@ -9,7 +9,6 @@ use tokio::sync::{mpsc, oneshot};
 
 use crate::{
     api::{Bot, BotResponse, PullModel, PullModelResponse, RemoveModel},
-    models::Models,
 };
 
 #[derive(Debug, Clone)]
@@ -25,10 +24,10 @@ pub enum Event {
 
 #[derive(Debug, Clone)]
 pub enum Request {
-    Ask((Models, String, Vec<String>)),
-    AskWithContext((Models, String, Vec<String>, Option<Vec<u64>>)),
-    PullModel(Models),
-    RemoveModel(Models),
+    Ask((String, String, Vec<String>)),
+    AskWithContext((String, String, Vec<String>, Option<Vec<u64>>)),
+    PullModel(String),
+    RemoveModel(String),
 }
 
 pub fn subscription<I: 'static + Hash + Copy + Send + Sync>(
@@ -84,7 +83,7 @@ pub fn service() -> impl Stream<Item = Event> + MaybeSend {
 }
 
 async fn client_request<'a>(
-    model: Models,
+    model: String,
     prompt: String,
     images: Vec<String>,
     context: Option<Vec<u64>>,
@@ -96,7 +95,7 @@ async fn client_request<'a>(
             Ok((new_client, responses)) => {
                 let tx = tx.clone();
 
-                let (kill_tx, kill_rx) = tokio::sync::oneshot::channel();
+                let (kill_tx, kill_rx) = oneshot::channel();
                 let listener = async {
                     let listener = Box::pin(async move {
                         let mut responses = std::pin::pin!(responses);
@@ -138,7 +137,7 @@ async fn pull_request<'a>(
             Ok((new_client, responses)) => {
                 let tx = tx.clone();
 
-                let (kill_tx, kill_rx) = tokio::sync::oneshot::channel();
+                let (kill_tx, kill_rx) = oneshot::channel();
                 let listener = async {
                     let listener = Box::pin(async move {
                         let mut responses = std::pin::pin!(responses);

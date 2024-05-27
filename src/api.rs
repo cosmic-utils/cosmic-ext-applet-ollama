@@ -171,7 +171,8 @@ pub struct Tags {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Model {
-    pub name: Option<String>,
+    pub name: String,
+    pub model: String,
     pub modified_at: Option<String>,
     pub size: Option<u64>,
     pub digest: Option<String>,
