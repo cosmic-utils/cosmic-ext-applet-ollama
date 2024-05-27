@@ -468,7 +468,7 @@ impl Window {
 
         let models_section = settings::view_section(fl!("manage-models"))
             .add(settings::item_row(vec![
-                widget::text_input("llama3:70b", &self.model_to_pull)
+                widget::text_input("llava:latest", &self.model_to_pull)
                     .width(Length::Fill)
                     .on_input(Message::ModelPullInput)
                     .into(),
