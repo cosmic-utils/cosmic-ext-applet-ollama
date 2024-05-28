@@ -68,6 +68,8 @@ pub enum Message {
     DelModel,
     OpenImages,
     ImagesResult(Vec<Image>),
+    FindAvatar,
+    AvatarResult(Option<widget::image::Handle>),
 }
 
 pub struct Window {
@@ -93,6 +95,7 @@ pub struct Window {
     del_model_index: Option<usize>,
     delete_this_model: String,
     status_area_status: String,
+    user_avatar: Option<widget::image::Handle>,
 }
 
 impl Application for Window {
@@ -143,6 +146,7 @@ impl Application for Window {
                 del_model_index: Some(0),
                 delete_this_model: models[0].clone(),
                 status_area_status: String::new(),
+                user_avatar: None,
             },
             Command::none(),
         )
@@ -258,7 +262,7 @@ impl Application for Window {
             },
             Message::ChangeModel(index) => {
                 self.model_index = Some(index);
-                self.selected_model = self.models[index].clone();
+                self.selected_model.clone_from(&self.models[index]);
             }
             Message::ClearChat => {
                 self.prompt.clear();
@@ -291,7 +295,7 @@ impl Application for Window {
             }
             Message::ModelsDelSelector(index) => {
                 self.del_model_index = Some(index);
-                self.delete_this_model = self.models[index].clone();
+                self.delete_this_model.clone_from(&self.models[index]);
             }
             Message::DelModel => {
                 self.last_id += 1;
@@ -334,6 +338,38 @@ impl Application for Window {
                 }
             }
             Message::ModelPullInput(model) => self.model_to_pull = model,
+            Message::FindAvatar => {
+                return Command::perform(
+                    async move {
+                        let result = SelectedFiles::open_file()
+                            .title("Open image")
+                            .accept_label("Attach")
+                            .modal(true)
+                            .multiple(false)
+                            .filter(FileFilter::new("JPEG Image").glob("*.jpg"))
+                            .filter(FileFilter::new("PNG Image").glob("*.png"))
+                            .send()
+                            .await
+                            .unwrap()
+                            .response();
+
+                        if let Ok(result) = result {
+                            let path = result.uris().first().unwrap();
+                            if let Ok(path) = path.to_file_path() {
+                                Some(widget::image::Handle::from_path(path))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    },
+                    |avatar_handle| {
+                        cosmic::app::message::app(Message::AvatarResult(avatar_handle))
+                    },
+                )
+            }
+            Message::AvatarResult(handle) => self.user_avatar = handle,
         };
 
         Command::none()
@@ -439,8 +475,13 @@ impl Window {
             .into()
     }
 
+    //noinspection ALL
     fn settings_view(&self) -> Element<Message> {
         let conv_section = settings::view_section(fl!("conversations"))
+            .add(settings::item(
+                fl!("user-avatar"),
+                widget::button::standard(fl!("open")).on_press(Message::FindAvatar),
+            ))
             .add(settings::item(
                 fl!("keep-context"),
                 widget::toggler(None, self.keep_context, |_| Message::ToggleContext),
@@ -518,7 +559,14 @@ impl Window {
             .padding(12)
             .style(theme::Container::List);
 
-        let content = widget::column().push(ai);
+        let avatar: &[u8] = include_bytes!("../data/icons/avatar.png");
+        let handle = widget::image::Handle::from_memory(avatar);
+        let avatar_widget = widget::image(handle)
+            .width(Length::Fixed(48.0))
+            .height(Length::Fixed(48.0));
+
+        let message_row = widget::row().push(avatar_widget).push(ai).spacing(12);
+        let content = widget::column().push(message_row);
 
         widget::Container::new(content).width(Length::Fill).into()
     }
@@ -546,11 +594,26 @@ impl Window {
             .padding(12)
             .style(theme::Container::List);
 
+        let handle = if self.user_avatar.is_none() {
+            let avatar: &[u8] = include_bytes!("../data/icons/avatar.png");
+            widget::image::Handle::from_memory(avatar)
+        } else {
+            self.user_avatar.as_ref().unwrap().to_owned()
+        };
+
+        let avatar_widget = widget::image(handle)
+            .width(Length::Fixed(48.0))
+            .height(Length::Fixed(48.0));
+
         let user = widget::Container::new(container)
             .width(Length::Fill)
             .align_x(Horizontal::Right);
 
-        widget::Container::new(user).width(Length::Fill).into()
+        let message_row = widget::row().push(user).push(avatar_widget).spacing(12);
+
+        widget::Container::new(message_row)
+            .width(Length::Fill)
+            .into()
     }
 
     fn chat_messages(&self, conv: &Conversation) -> Element<Message> {
