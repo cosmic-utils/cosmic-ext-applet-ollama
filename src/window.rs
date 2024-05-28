@@ -18,6 +18,7 @@ use cosmic::{
     widget::{self, settings},
     Application, Command, Element,
 };
+use std::path::PathBuf;
 
 use crate::{
     chat::{
@@ -26,7 +27,7 @@ use crate::{
     },
     fl,
     models::installed_models,
-    stream,
+    stream, Settings,
 };
 
 const ID: &str = "io.github.elevenhsoft.CosmicAppletOllama";
@@ -69,7 +70,7 @@ pub enum Message {
     OpenImages,
     ImagesResult(Vec<Image>),
     FindAvatar,
-    AvatarResult(Option<widget::image::Handle>),
+    AvatarResult(PathBuf),
 }
 
 pub struct Window {
@@ -95,7 +96,8 @@ pub struct Window {
     del_model_index: Option<usize>,
     delete_this_model: String,
     status_area_status: String,
-    user_avatar: Option<widget::image::Handle>,
+    user_avatar: widget::image::Handle,
+    settings: Settings,
 }
 
 impl Application for Window {
@@ -121,6 +123,8 @@ impl Application for Window {
     ) -> (Self, Command<cosmic::app::Message<Self::Message>>) {
         let system_messages = Vec::new();
         let models: Vec<String> = installed_models();
+        let settings = Settings::load();
+        let model_index = models.clone().into_iter().position(|model| model == settings.model);
 
         (
             Self {
@@ -132,11 +136,11 @@ impl Application for Window {
                 bot_response: String::new(),
                 system_messages,
                 models: models.clone(),
-                selected_model: models[0].clone(),
-                model_index: Some(0),
+                selected_model: settings.model.clone(),
+                model_index,
                 last_id: 0,
                 chat_id: id::Id::new("chat"),
-                keep_context: true,
+                keep_context: settings.keep_context,
                 context: None,
                 images: Vec::new(),
                 saved_conversations: Vec::new(),
@@ -146,7 +150,8 @@ impl Application for Window {
                 del_model_index: Some(0),
                 delete_this_model: models[0].clone(),
                 status_area_status: String::new(),
-                user_avatar: None,
+                user_avatar: settings.get_avatar_handle(),
+                settings,
             },
             Command::none(),
         )
@@ -263,13 +268,19 @@ impl Application for Window {
             Message::ChangeModel(index) => {
                 self.model_index = Some(index);
                 self.selected_model.clone_from(&self.models[index]);
+                self.settings.set_model(self.selected_model.clone());
+                let _ = self.settings.save();
             }
             Message::ClearChat => {
                 self.prompt.clear();
                 self.system_messages.clear();
                 self.conversation = Conversation::new();
             }
-            Message::ToggleContext => self.keep_context = !self.keep_context,
+            Message::ToggleContext => {
+                self.keep_context = !self.keep_context;
+                self.settings.change_context(self.keep_context);
+                let _ = self.settings.save();
+            }
             Message::StopBot => self.last_id += 1,
             Message::SaveConversation => {
                 let _ = self.conversation.save_to_file();
@@ -356,20 +367,23 @@ impl Application for Window {
                         if let Ok(result) = result {
                             let path = result.uris().first().unwrap();
                             if let Ok(path) = path.to_file_path() {
-                                Some(widget::image::Handle::from_path(path))
+                                path
                             } else {
-                                None
+                                PathBuf::new()
                             }
                         } else {
-                            None
+                            PathBuf::new()
                         }
                     },
-                    |avatar_handle| {
-                        cosmic::app::message::app(Message::AvatarResult(avatar_handle))
-                    },
+                    |path| cosmic::app::message::app(Message::AvatarResult(path)),
                 )
             }
-            Message::AvatarResult(handle) => self.user_avatar = handle,
+            Message::AvatarResult(path) => {
+                let handle = widget::image::Handle::from_path(&path);
+                self.user_avatar = handle;
+                self.settings.set_avatar(path);
+                let _ = self.settings.save();
+            }
         };
 
         Command::none()
@@ -594,14 +608,7 @@ impl Window {
             .padding(12)
             .style(theme::Container::List);
 
-        let handle = if self.user_avatar.is_none() {
-            let avatar: &[u8] = include_bytes!("../data/icons/avatar.png");
-            widget::image::Handle::from_memory(avatar)
-        } else {
-            self.user_avatar.as_ref().unwrap().to_owned()
-        };
-
-        let avatar_widget = widget::image(handle)
+        let avatar_widget = widget::image(self.user_avatar.clone())
             .width(Length::Fixed(48.0))
             .height(Length::Fixed(48.0));
 
