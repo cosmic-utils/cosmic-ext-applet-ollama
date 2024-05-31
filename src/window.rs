@@ -124,7 +124,10 @@ impl Application for Window {
         let system_messages = Vec::new();
         let models: Vec<String> = installed_models();
         let settings = Settings::load();
-        let model_index = models.clone().into_iter().position(|model| model == settings.model);
+        let model_index = models
+            .clone()
+            .into_iter()
+            .position(|model| model == settings.model);
 
         (
             Self {
