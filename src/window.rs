@@ -128,6 +128,11 @@ impl Application for Window {
             .clone()
             .into_iter()
             .position(|model| model == settings.model);
+        let delete_this_model = if !models.is_empty() {
+            models[0].clone()
+        } else {
+            String::new()
+        };
 
         (
             Self {
@@ -151,7 +156,7 @@ impl Application for Window {
                 request: StreamingRequest::AskWithContext,
                 model_to_pull: String::new(),
                 del_model_index: Some(0),
-                delete_this_model: models[0].clone(),
+                delete_this_model,
                 status_area_status: String::new(),
                 user_avatar: settings.get_avatar_handle(),
                 settings,
