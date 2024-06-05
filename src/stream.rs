@@ -7,9 +7,7 @@ use cosmic::{
 use futures::SinkExt;
 use tokio::sync::{mpsc, oneshot};
 
-use crate::{
-    api::{Bot, BotResponse, PullModel, PullModelResponse, RemoveModel},
-};
+use crate::api::{Bot, BotResponse, PullModel, PullModelResponse, RemoveModel};
 
 #[derive(Debug, Clone)]
 pub enum Event {

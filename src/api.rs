@@ -2,6 +2,8 @@ use futures::Stream;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 
+use crate::Settings;
+
 #[derive(Serialize)]
 struct GenerateNonContext {
     model: String,
@@ -49,7 +51,8 @@ impl Bot {
         Self,
         impl Stream<Item = anyhow::Result<bytes::Bytes, reqwest::Error>>,
     )> {
-        let client = Client::new().post("http://localhost:11434/api/generate");
+        let settings = Settings::load();
+        let client = Client::new().post(format!("http://{}/api/generate", settings.ollama_address));
 
         let stream = if context.is_none() {
             let no_context_query = GenerateNonContext {
@@ -115,7 +118,8 @@ impl PullModel {
         Self,
         impl Stream<Item = anyhow::Result<bytes::Bytes, reqwest::Error>>,
     )> {
-        let client = Client::new().post("http://localhost:11434/api/pull");
+        let settings = Settings::load();
+        let client = Client::new().post(format!("http://{}/api/pull", settings.ollama_address));
 
         let pull_query = PullModelQuery { name: model };
 
@@ -146,7 +150,8 @@ pub struct RemoveModel {
 
 impl RemoveModel {
     pub async fn new(model: String) -> anyhow::Result<(Self, StatusCode)> {
-        let client = Client::new().delete("http://localhost:11434/api/delete");
+        let settings = Settings::load();
+        let client = Client::new().delete(format!("http://{}/api/delete", settings.ollama_address));
 
         let remove_query = RemoveModelQuery { name: model };
 
@@ -195,10 +200,20 @@ pub struct ListModels {
 
 impl ListModels {
     pub fn new() -> Self {
-        let client = reqwest::blocking::Client::new().get("http://localhost:11434/api/tags");
+        let settings = Settings::load();
+        let client = reqwest::blocking::Client::new()
+            .get(format!("http://{}/api/tags", settings.ollama_address));
 
-        let request = client.send().unwrap().json::<Tags>();
+        let request = client.send();
 
-        Self { result: request }
+        if let Ok(result) = request {
+            Self {
+                result: result.json::<Tags>(),
+            }
+        } else {
+            Self {
+                result: Ok(Tags { models: Vec::new() }),
+            }
+        }
     }
 }

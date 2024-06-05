@@ -5,14 +5,14 @@ mod models;
 mod stream;
 mod window;
 
+use cosmic::widget;
+use ron::de::from_reader;
 use ron::ser::{to_string_pretty, PrettyConfig};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Write};
 use std::path::PathBuf;
-use cosmic::widget;
-use ron::de::from_reader;
 use window::Window;
 
 pub fn run() -> cosmic::iced::Result {
@@ -26,6 +26,7 @@ pub struct Settings {
     avatar: PathBuf,
     keep_context: bool,
     model: String,
+    ollama_address: String,
 }
 
 impl Settings {
@@ -34,6 +35,7 @@ impl Settings {
             avatar: PathBuf::new(),
             keep_context: true,
             model: String::new(),
+            ollama_address: "localhost:11434".to_string(),
         }
     }
 
@@ -61,6 +63,11 @@ impl Settings {
         self
     }
 
+    pub fn set_ollama_address(&mut self, ip_port: String) -> &mut Self {
+        self.ollama_address = ip_port;
+        self
+    }
+
     pub fn load() -> Settings {
         let data_path = dirs::data_dir()
             .expect("xdg-data not found")
@@ -72,7 +79,7 @@ impl Settings {
         if let Ok(opened) = File::open(data_path) {
             let reader = BufReader::new(opened);
             let settings: Settings = from_reader(reader).expect("Cannot parse settings file");
-            return settings
+            return settings;
         }
         settings
     }

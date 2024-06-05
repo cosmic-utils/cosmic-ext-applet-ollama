@@ -40,6 +40,7 @@ pub enum Pages {
 
 #[derive(Debug, Clone)]
 pub enum StreamingRequest {
+    Idle,
     Ask,
     AskWithContext,
     PullModel,
@@ -71,6 +72,9 @@ pub enum Message {
     ImagesResult(Vec<Image>),
     FindAvatar,
     AvatarResult(PathBuf),
+    OllamaAdressFlag(bool),
+    OllamaAddressInput(String),
+    OllamaAddressSend,
 }
 
 pub struct Window {
@@ -97,6 +101,8 @@ pub struct Window {
     delete_this_model: String,
     status_area_status: String,
     user_avatar: widget::image::Handle,
+    ollama_address: String,
+    ollama_address_edit: bool,
     settings: Settings,
 }
 
@@ -153,12 +159,14 @@ impl Application for Window {
                 images: Vec::new(),
                 saved_conversations: Vec::new(),
                 selected_saved_conv: Some(0),
-                request: StreamingRequest::AskWithContext,
+                request: StreamingRequest::Idle,
                 model_to_pull: String::new(),
                 del_model_index: Some(0),
                 delete_this_model,
                 status_area_status: String::new(),
                 user_avatar: settings.get_avatar_handle(),
+                ollama_address: settings.ollama_address.clone(),
+                ollama_address_edit: false,
                 settings,
             },
             Command::none(),
@@ -243,6 +251,7 @@ impl Application for Window {
                                 self.delete_this_model.clone(),
                             ))
                         }
+                        StreamingRequest::Idle => {}
                     }
                     self.prompt.clear();
                 }
@@ -257,6 +266,7 @@ impl Application for Window {
                         .push(Text::Bot(MessageContent::Text(self.bot_response.clone())));
                     self.bot_response.clear();
                     self.images.clear();
+                    self.request = StreamingRequest::Idle;
                 }
                 stream::Event::PullResponse(status) => {
                     self.status_area_status = status.status;
@@ -390,6 +400,13 @@ impl Application for Window {
                 let handle = widget::image::Handle::from_path(&path);
                 self.user_avatar = handle;
                 self.settings.set_avatar(path);
+                let _ = self.settings.save();
+            }
+            Message::OllamaAdressFlag(flag) => self.ollama_address_edit = flag,
+            Message::OllamaAddressInput(input) => self.ollama_address = input,
+            Message::OllamaAddressSend => {
+                self.settings
+                    .set_ollama_address(self.ollama_address.clone());
                 let _ = self.settings.save();
             }
         };
@@ -550,7 +567,16 @@ impl Window {
                 widget::button::standard(fl!("remove-model"))
                     .on_press(Message::DelModel)
                     .into(),
-            ]));
+            ]))
+            .add(settings::item_row(vec![widget::editable_input(
+                "IP:PORT",
+                &self.ollama_address,
+                self.ollama_address_edit,
+                Message::OllamaAdressFlag,
+            )
+            .on_input(Message::OllamaAddressInput)
+            .on_submit(Message::OllamaAddressSend)
+            .into()]));
 
         let spacer = widget::Space::with_height(Length::Fill);
 
