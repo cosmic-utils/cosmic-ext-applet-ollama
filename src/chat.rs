@@ -70,7 +70,7 @@ impl Conversation {
     pub fn save_to_file(&self) -> anyhow::Result<()> {
         let data_path = dirs::data_dir()
             .expect("xdg-data not found")
-            .join("cosmic-applet-ollama/chat");
+            .join("cosmic-ext-applet-ollama/chat");
 
         fs::create_dir_all(&data_path)?;
 
@@ -90,7 +90,7 @@ impl Conversation {
     pub fn remove(&self, filename: String) -> anyhow::Result<()> {
         let data_path = dirs::data_dir()
             .expect("xdg-data not found")
-            .join("cosmic-applet-ollama/chat")
+            .join("cosmic-ext-applet-ollama/chat")
             .join(format!("{}.ron", &filename));
 
         fs::remove_file(data_path)?;
@@ -102,7 +102,7 @@ impl Conversation {
 pub fn read_conversation_files() -> anyhow::Result<Vec<String>> {
     let data_path = dirs::data_dir()
         .expect("xdg-data not found")
-        .join("cosmic-applet-ollama/chat");
+        .join("cosmic-ext-applet-ollama/chat");
 
     let mut conversations = Vec::new();
 
@@ -126,7 +126,7 @@ pub fn read_conversation_files() -> anyhow::Result<Vec<String>> {
 pub fn load_conversation(filename: String) -> Conversation {
     let data_path = dirs::data_dir()
         .expect("xdg-data not found")
-        .join("cosmic-applet-ollama/chat")
+        .join("cosmic-ext-applet-ollama/chat")
         .join(format!("{}.ron", filename));
 
     let contents = fs::read_to_string(data_path).unwrap();

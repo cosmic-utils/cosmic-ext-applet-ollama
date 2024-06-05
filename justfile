@@ -8,7 +8,7 @@ vendor_args := if vendor == '1' { '--frozen --offline' } else { '' }
 debug_args := if debug == '1' { '' } else { '--release' }
 cargo_args := vendor_args + ' ' + debug_args
 
-name := 'cosmic-applet-ollama'
+name := 'cosmic-ext-applet-ollama'
 
 targetdir := env('CARGO_TARGET_DIR', 'target')
 sharedir := rootdir + prefix + '/share'
@@ -34,7 +34,7 @@ _link_applet name:
     ln -sf {{cosmic-applets-bin}} {{bindir}}/{{name}}
 
 _install_icon:
-    install -Dm0644 'data/icons/scalable/apps/io.github.elevenhsoft.CosmicAppletOllama-symbolic.svg' {{iconsdir}}
+    install -Dm0644 'data/icons/scalable/apps/io.github.elevenhsoft.CosmicExtAppletOllama-symbolic.svg' {{iconsdir}}
 
 _install_desktop path:
     install -Dm0644 {{path}} {{sharedir}}/applications/{{file_name(path)}}
@@ -49,7 +49,7 @@ _install_applet id name: \
 
 
 # Installs files into the system
-install:(_install_applet 'io.github.elevenhsoft.CosmicAppletOllama' 'cosmic-applet-ollama') 
+install:(_install_applet 'io.github.elevenhsoft.CosmicExtAppletOllama' 'cosmic-ext-applet-ollama') 
 
 # Vendor Cargo dependencies locally
 vendor:

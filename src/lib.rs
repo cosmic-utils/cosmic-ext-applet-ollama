@@ -71,7 +71,7 @@ impl Settings {
     pub fn load() -> Settings {
         let data_path = dirs::data_dir()
             .expect("xdg-data not found")
-            .join("cosmic-applet-ollama")
+            .join("cosmic-ext-applet-ollama")
             .join("settings.ron");
 
         let settings: Settings = Settings::new();
@@ -87,7 +87,7 @@ impl Settings {
     pub fn save(&self) -> anyhow::Result<()> {
         let data_path = dirs::data_dir()
             .expect("xdg-data not found")
-            .join("cosmic-applet-ollama");
+            .join("cosmic-ext-applet-ollama");
 
         fs::create_dir_all(&data_path)?;
 

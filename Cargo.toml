@@ -1,5 +1,5 @@
 [package]
-name = "cosmic-applet-ollama"
+name = "cosmic-ext-applet-ollama"
 version = "0.1.0"
 edition = "2021"
 

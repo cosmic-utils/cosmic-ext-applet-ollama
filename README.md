@@ -2,8 +2,8 @@
   <h1>COSMIC Applet for Ollama chat</h1>
   <br>
   <div>
-    <img alt="chat" src="https://github.com/elevenhsoft/cosmic-applet-ollama/blob/main/screenshots/chat.png" width="280">
-    <img alt="settings" src="https://github.com/elevenhsoft/cosmic-applet-ollama/blob/main/screenshots/settings.png" width="280">
+    <img alt="chat" src="https://github.com/elevenhsoft/cosmic-ext-applet-ollama/blob/main/screenshots/chat.png" width="280">
+    <img alt="settings" src="https://github.com/elevenhsoft/cosmic-ext-applet-ollama/blob/main/screenshots/settings.png" width="280">
   </div>
 </div>
 
@@ -29,9 +29,9 @@ If you don't have `just` installed, it is available in PopOS repository, so you 
 
 Now you can clone repo and install applet.
 
-`git clone https://github.com/elevenhsoft/cosmic-applet-ollama.git`
+`git clone https://github.com/elevenhsoft/cosmic-ext-applet-ollama.git`
 
-`cd cosmic-applet-ollama`
+`cd cosmic-ext-applet-ollama`
 
 ### Building
 

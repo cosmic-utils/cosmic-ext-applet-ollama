@@ -877,30 +877,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cosmic-applet-ollama"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ashpd",
- "async-stream",
- "base64 0.22.1",
- "bytes",
- "chrono",
- "dirs",
- "futures",
- "i18n-embed",
- "i18n-embed-fl",
- "libcosmic",
- "once_cell",
- "reqwest",
- "ron",
- "rust-embed",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "cosmic-client-toolkit"
 version = "0.1.0"
 source = "git+https://github.com/pop-os/cosmic-protocols?rev=e4e6f8c#e4e6f8ca4d7c239c02a8cdfd48a74cb0969425eb"
@@ -937,6 +913,30 @@ source = "git+https://github.com/pop-os/libcosmic#173ddca60fdb26cf5b1784edfc1a78
 dependencies = [
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "cosmic-ext-applet-ollama"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ashpd",
+ "async-stream",
+ "base64 0.22.1",
+ "bytes",
+ "chrono",
+ "dirs",
+ "futures",
+ "i18n-embed",
+ "i18n-embed-fl",
+ "libcosmic",
+ "once_cell",
+ "reqwest",
+ "ron",
+ "rust-embed",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
