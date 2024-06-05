@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>COSMIC Applet for Ollama chat</h1>
+  <h1>Ollama applet for COSMIC Desktop</h1>
   <br>
   <div>
     <img alt="chat" src="https://github.com/elevenhsoft/cosmic-ext-applet-ollama/blob/main/screenshots/chat.png" width="280">
