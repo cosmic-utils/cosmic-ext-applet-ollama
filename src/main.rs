@@ -1,3 +1,3 @@
 fn main() -> cosmic::iced::Result {
-    cosmic_applet_ollama::run()
+    cosmic_ext_applet_ollama::run()
 }
