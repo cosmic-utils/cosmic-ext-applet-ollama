@@ -942,7 +942,7 @@ dependencies = [
 [[package]]
 name = "cosmic-panel-config"
 version = "0.1.0"
-source = "git+https://github.com/pop-os/cosmic-panel#568f3392d3b50e4e8fb5f87064a3baa91e96e231"
+source = "git+https://github.com/pop-os/cosmic-panel#e082d6d40b5781a0d812e5a5f360367be944e6f0"
 dependencies = [
  "anyhow",
  "cosmic-config",
@@ -970,13 +970,14 @@ dependencies = [
 [[package]]
 name = "cosmic-text"
 version = "0.11.2"
-source = "git+https://github.com/pop-os/cosmic-text.git#b0a70c70ffba883ac6ff022b535db195712f552f"
+source = "git+https://github.com/pop-os/cosmic-text.git#89503b254fb6a2014d3712568054b32925ea9008"
 dependencies = [
  "bitflags 2.5.0",
  "fontdb",
  "libm",
  "log",
  "rangemap",
+ "rayon",
  "rustc-hash",
  "rustybuzz",
  "self_cell 1.0.4",
@@ -1389,9 +1390,9 @@ checksum = "a0474425d51df81997e2f90a21591180b38eccf27292d755f3e30750225c175b"
 
 [[package]]
 name = "etagere"
-version = "0.2.10"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "306960881d6c46bd0dd6b7f07442a441418c08d0d3e63d8d080b0f64c6343e4e"
+checksum = "4460bc8c5caa3360e4221a5a2930c654a141dd3fe067a00c5355c488e711ae79"
 dependencies = [
  "euclid",
  "svg_fmt",
@@ -4731,7 +4732,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "winnow 0.6.9",
+ "winnow 0.6.11",
 ]
 
 [[package]]
@@ -4914,9 +4915,9 @@ checksum = "b1d386ff53b415b7fe27b50bb44679e2cc4660272694b7b6f3326d8480823a94"
 
 [[package]]
 name = "unicode-width"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68f5e5f3158ecfd4b8ff6fe086db7c8467a2dfdac97fe420f2b7c4aa97af66d6"
+checksum = "0336d538f7abc86d282a4189614dfaa90810dfc2c6f6427eaf88e16311dd225d"
 
 [[package]]
 name = "unicode-xid"
@@ -5601,9 +5602,9 @@ dependencies = [
 
 [[package]]
 name = "winnow"
-version = "0.6.9"
+version = "0.6.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86c949fede1d13936a99f14fafd3e76fd642b556dd2ce96287fbe2e0151bfac6"
+checksum = "56c52728401e1dc672a56e81e593e912aa54c78f40246869f78359a2bf24d29d"
 dependencies = [
  "memchr",
 ]
