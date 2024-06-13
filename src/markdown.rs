@@ -15,6 +15,14 @@ use cosmic_text::{Attrs, Buffer, Edit, FontSystem, Metrics, SyntaxEditor};
 
 use crate::{FONT_SYSTEM, SWASH_CACHE, SYNTAX_SYSTEM};
 
+fn syntax_theme() -> &'static str {
+    if cosmic::theme::is_dark() {
+        return "COSMIC Dark";
+    }
+
+    "COSMIC Light"
+}
+
 pub struct Markdown {
     syntax_editor: Mutex<SyntaxEditor<'static, 'static>>,
     font_system: &'static Mutex<FontSystem>,
@@ -35,7 +43,7 @@ impl Markdown {
             cosmic_text::Shaping::Advanced,
         );
 
-        let mut editor = SyntaxEditor::new(buffer, syntax_system, "base16-eighties.dark").unwrap();
+        let mut editor = SyntaxEditor::new(buffer, syntax_system, syntax_theme()).unwrap();
         editor.syntax_by_extension(syntax_ext);
 
         Self {
