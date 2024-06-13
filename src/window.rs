@@ -26,7 +26,7 @@ use crate::{
         MessageContent, Text,
     },
     fl,
-    markdown::markdown,
+    markdown::{markdown, markdown_to_string},
     models::installed_models,
     stream, Settings,
 };
@@ -602,7 +602,8 @@ impl Window {
     }
 
     fn bot_bubble(&self, message: String) -> Element<Message> {
-        let mut text = markdown(message.clone(), "rs");
+        let (message, language) = markdown_to_string(&message);
+        let mut text = markdown(message.clone(), &language);
         text.margin(57.0);
 
         let ai = widget::Container::new(text)
@@ -635,7 +636,8 @@ impl Window {
             },
             MessageContent::Text(txt) => {
                 if !txt.is_empty() {
-                    let mut markdown = markdown(txt.clone(), "rs");
+                    let (message, language) = markdown_to_string(txt);
+                    let mut markdown = markdown(message.clone(), &language);
                     markdown.margin(48.0);
                     column = column.push(markdown)
                 }

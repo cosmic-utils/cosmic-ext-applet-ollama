@@ -33,6 +33,7 @@ ashpd = { version = "0.8.1", features = ["wayland"] }
 base64 = "0.22.1"
 syntect = "5.2.0"
 two-face = "0.3.0"
+markdown = "0.3.0"
 
 [dependencies.libcosmic]
 git = "https://github.com/pop-os/libcosmic"

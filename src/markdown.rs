@@ -12,6 +12,7 @@ use cosmic::{
     Element, Renderer,
 };
 use cosmic_text::{Attrs, Buffer, Edit, FontSystem, Metrics, SyntaxEditor};
+use markdown::{tokenize, Block, ListItem, Span};
 
 use crate::{FONT_SYSTEM, SWASH_CACHE, SYNTAX_SYSTEM};
 
@@ -191,7 +192,7 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
                 buffer.draw(
                     &mut font_system,
                     &mut swash_cache,
-                    cosmic_text::Color(0x00FFFF),
+                    cosmic_text::Color(0xFFFFFF),
                     |x, y, w, h, color| {
                         draw_rect(
                             pixels,
@@ -326,5 +327,146 @@ pub fn markdown(content: String, syntax_ext: &str) -> Markdown {
 impl<'a, Message> From<Markdown> for Element<'a, Message> {
     fn from(value: Markdown) -> Self {
         Self::new(value)
+    }
+}
+
+pub fn markdown_to_string(content: &str) -> (String, String) {
+    let mut result = String::new();
+    let mut language = String::new();
+
+    for block in tokenize(content) {
+        let (text, lang) = parse_block(block);
+
+        result.push_str(&text);
+
+        if language.is_empty() {
+            language.push_str(&lang)
+        }
+    }
+
+    (result, language)
+}
+
+fn parse_block(block: Block) -> (String, String) {
+    let mut result = String::new();
+    let mut language = String::new();
+
+    match block {
+        markdown::Block::Header(header, _len) => {
+            if !header.is_empty() {
+                for span in header {
+                    result.push_str(&parse_span(span))
+                }
+            }
+        }
+        markdown::Block::Paragraph(para) => {
+            if !para.is_empty() {
+                for span in para {
+                    result.push_str(&parse_span(span))
+                }
+            }
+        }
+        markdown::Block::Blockquote(block) => {
+            if !block.is_empty() {
+                for block in block {
+                    let (text, lang) = parse_block(block);
+
+                    result.push_str(&text);
+
+                    if language.is_empty() {
+                        language.push_str(language_to_extension(lang));
+                    }
+                }
+            }
+        }
+        markdown::Block::CodeBlock(lang, code) => {
+            if let Some(lang) = lang {
+                // result.push_str(&format!("{} code:\n", lang));
+
+                if language.is_empty() {
+                    language.push_str(language_to_extension(lang));
+                }
+            }
+            result.push_str(&format!("\n{}\n", code));
+        }
+        markdown::Block::OrderedList(listitem, _listtype) => {
+            if !listitem.is_empty() {
+                for item in listitem {
+                    let text = parse_listitem(item);
+
+                    result.push_str(&format!("\n{}", text));
+                }
+            }
+        }
+        markdown::Block::UnorderedList(listitem) => {
+            if !listitem.is_empty() {
+                for item in listitem {
+                    let text = parse_listitem(item);
+
+                    result.push_str(&format!("\n{}", text));
+                }
+            }
+        }
+        markdown::Block::Raw(raw) => result.push_str(&raw),
+        markdown::Block::Hr => result.push('\n'),
+    }
+
+    (result, language)
+}
+
+fn parse_listitem(listitem: ListItem) -> String {
+    let mut result = String::new();
+
+    match listitem {
+        ListItem::Simple(simple) => {
+            if !simple.is_empty() {
+                for span in simple {
+                    result.push_str(&format!("  {}", parse_span(span)))
+                }
+            }
+        }
+        ListItem::Paragraph(para) => {
+            if !para.is_empty() {
+                for block in para {
+                    let (text, _lang) = parse_block(block);
+
+                    result.push_str(&text);
+                }
+            }
+        }
+    }
+
+    result
+}
+
+fn parse_span(span: Span) -> String {
+    let mut result = String::new();
+
+    match span {
+        markdown::Span::Break => result.push('\n'),
+        markdown::Span::Text(text) => result.push_str(&text),
+        markdown::Span::Code(code) => result.push_str(&code),
+        markdown::Span::Link(_, _, _) => {}
+        markdown::Span::Image(_, _, _) => {}
+        markdown::Span::Emphasis(emphasis) => {
+            for span in emphasis {
+                result.push_str(&format!("\n{}\n", parse_span(span)));
+            }
+        }
+        markdown::Span::Strong(strong) => {
+            for span in strong {
+                result.push_str(&format!("\n{}\n", parse_span(span)));
+            }
+        }
+    }
+
+    result
+}
+
+fn language_to_extension(lang: String) -> &'static str {
+    match lang.as_str() {
+        "rust" => "rs",
+        "python" => "py",
+        _ => "",
     }
 }
