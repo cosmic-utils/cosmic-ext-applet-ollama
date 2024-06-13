@@ -83,7 +83,7 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
         limits: &layout::Limits,
     ) -> layout::Node {
         let mut font_system = self.font_system.lock().unwrap();
-        let limits = limits.width(Length::Fill);
+        let max_width = limits.max().width - self.margin;
 
         let mut editor = self.syntax_editor.lock().unwrap();
         editor.borrow_with(&mut font_system).shape_as_needed(true);
@@ -99,7 +99,7 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
 
                         for l in layout.iter() {
                             if layout_lines > 1 {
-                                width = limits.max().width - self.margin;
+                                width = max_width;
 
                                 break;
                             }
@@ -111,7 +111,12 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
             }
             let height = layout_lines as f32 * buffer.metrics().line_height;
 
-            buffer.set_size(&mut font_system, Some(limits.max().width), Some(height));
+            buffer.set_metrics_and_size(
+                &mut font_system,
+                self.metrics,
+                Some(max_width),
+                Some(height),
+            );
 
             let size = Size::new(width, height);
 
@@ -136,7 +141,6 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
         let mut editor = self.syntax_editor.lock().unwrap();
 
         let scale_factor = style.scale_factor as f32;
-        let metrics = self.metrics.scale(scale_factor);
 
         let view_w = layout.bounds().width as i32;
         let view_h = layout.bounds().height as i32;
@@ -165,15 +169,6 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
         let (image_h, _scaled_h) = calculate_ideal(view_h);
 
         editor.shape_as_needed(&mut font_system, true);
-
-        editor.with_buffer_mut(|buffer| {
-            buffer.set_metrics_and_size(
-                &mut font_system,
-                metrics,
-                Some(view_w as f32),
-                Some(view_h as f32),
-            );
-        });
 
         let mut pixels_u8 = vec![0; image_w as usize * image_h as usize * 4];
 
