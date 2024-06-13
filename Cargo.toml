@@ -31,8 +31,18 @@ dirs = "5.0.1"
 chrono = "0.4.38"
 ashpd = { version = "0.8.1", features = ["wayland"] }
 base64 = "0.22.1"
+syntect = "5.2.0"
+two-face = "0.3.0"
 
 [dependencies.libcosmic]
 git = "https://github.com/pop-os/libcosmic"
 default-features = false
 features = ["applet", "tokio", "wayland", "wgpu"]
+
+[dependencies.cosmic-syntax-theme]
+git = "https://github.com/pop-os/cosmic-syntax-theme.git"
+
+[dependencies.cosmic-text]
+git = "https://github.com/pop-os/cosmic-text"
+default-features = false
+features = ["syntect"]

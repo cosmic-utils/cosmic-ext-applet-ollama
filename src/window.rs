@@ -26,6 +26,7 @@ use crate::{
         MessageContent, Text,
     },
     fl,
+    markdown::markdown,
     models::installed_models,
     stream, Settings,
 };
@@ -601,7 +602,8 @@ impl Window {
     }
 
     fn bot_bubble(&self, message: String) -> Element<Message> {
-        let text = widget::text(message);
+        let mut text = markdown(message.clone(), "rs");
+        text.margin(57.0);
 
         let ai = widget::Container::new(text)
             .padding(12)
@@ -616,7 +618,7 @@ impl Window {
         let message_row = widget::row().push(avatar_widget).push(ai).spacing(12);
         let content = widget::column().push(message_row);
 
-        widget::Container::new(content).width(Length::Fill).into()
+        widget::Container::new(content).into()
     }
 
     fn user_bubble(&self, message: &MessageContent) -> Element<Message> {
@@ -633,10 +635,14 @@ impl Window {
             },
             MessageContent::Text(txt) => {
                 if !txt.is_empty() {
-                    column = column.push(widget::text(txt.clone()))
+                    let mut markdown = markdown(txt.clone(), "rs");
+                    markdown.margin(48.0);
+                    column = column.push(markdown)
                 }
             }
         };
+
+        let margin = widget::row().width(50).height(50);
 
         let container = widget::container(column)
             .padding(12)
@@ -646,14 +652,15 @@ impl Window {
             .width(Length::Fixed(48.0))
             .height(Length::Fixed(48.0));
 
-        let user = widget::Container::new(container)
-            .width(Length::Fill)
-            .align_x(Horizontal::Right);
-
-        let message_row = widget::row().push(user).push(avatar_widget).spacing(12);
+        let message_row = widget::row()
+            .push(margin)
+            .push(container)
+            .push(avatar_widget)
+            .spacing(12);
 
         widget::Container::new(message_row)
             .width(Length::Fill)
+            .align_x(Horizontal::Right)
             .into()
     }
 
