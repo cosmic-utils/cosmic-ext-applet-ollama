@@ -489,6 +489,7 @@ fn language_to_extension(lang: String) -> &'static str {
         "r" => "r",
         "perl" => "pl",
         "shell" => "sh",
+        "bash" => "sh",
         "objective-c" => "m",
         "objective-c++" => "mm",
         "typescript" => "ts",
