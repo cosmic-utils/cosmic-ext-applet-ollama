@@ -11,48 +11,48 @@ use cosmic::{
     },
     Element, Renderer,
 };
-use cosmic_text::{Attrs, Buffer, Edit, FontSystem, Metrics, SyntaxEditor};
+use cosmic_text::{
+    Attrs, Buffer, Color, Edit, Editor, Family, FontSystem, Metrics, Shaping, Weight,
+};
 use markdown::{tokenize, Block, ListItem, Span};
+use syntect::{
+    easy::HighlightLines,
+    highlighting::{Style, ThemeSet},
+    parsing::SyntaxSet,
+    util::LinesWithEndings,
+};
 
-use crate::{FONT_SYSTEM, SWASH_CACHE, SYNTAX_SYSTEM};
+use crate::{FONT_SYSTEM, SWASH_CACHE};
 
 fn syntax_theme() -> &'static str {
-    if cosmic::theme::is_dark() {
-        return "COSMIC Dark";
+    if !cosmic::theme::is_dark() {
+        return "base16-ocean.light";
     }
 
-    "COSMIC Light"
+    "base16-ocean.dark"
 }
 
 pub struct Markdown {
-    syntax_editor: Mutex<SyntaxEditor<'static, 'static>>,
+    editor: Mutex<Editor<'static>>,
     font_system: &'static Mutex<FontSystem>,
-    metrics: Metrics,
     margin: f32,
 }
 
 impl Markdown {
     pub fn new(content: String) -> Self {
-        let metrics = Metrics::new(14.0, 20.0);
-        let mut font_system = FONT_SYSTEM.get().unwrap().lock().unwrap();
-        let mut buffer = Buffer::new(&mut font_system, metrics);
-        let syntax_system = SYNTAX_SYSTEM.get().unwrap();
+        let metrics = metrics(14.0);
+        let font_system = FONT_SYSTEM.get().unwrap();
+        let buffer = Buffer::new_empty(metrics);
 
-        let (text, lang) = markdown_to_string(&content);
+        let mut editor = Editor::new(buffer);
 
-        buffer.borrow_with(&mut font_system).set_text(
-            &text,
-            Attrs::new(),
-            cosmic_text::Shaping::Advanced,
-        );
-
-        let mut editor = SyntaxEditor::new(buffer, syntax_system, syntax_theme()).unwrap();
-        editor.syntax_by_extension(&lang);
+        editor.with_buffer_mut(|buffer| {
+            set_buffer_text(&content, &mut font_system.lock().unwrap(), buffer)
+        });
 
         Self {
-            syntax_editor: Mutex::new(editor),
-            font_system: FONT_SYSTEM.get().unwrap(),
-            metrics,
+            editor: Mutex::new(editor),
+            font_system,
             margin: 0.0,
         }
     }
@@ -96,12 +96,13 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
         let mut font_system = self.font_system.lock().unwrap();
         let max_width = limits.max().width - self.margin;
 
-        let mut editor = self.syntax_editor.lock().unwrap();
+        let mut editor = self.editor.lock().unwrap();
         editor.borrow_with(&mut font_system).shape_as_needed(true);
 
         editor.with_buffer_mut(|buffer| {
             let mut layout_lines = 0;
             let mut width = 0.0;
+            let mut height = 0.0;
 
             buffer.set_size(
                 &mut font_system,
@@ -124,18 +125,20 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
                             }
                             width = l.w;
                         }
+
+                        for l in layout.iter() {
+                            if let Some(line_height) = l.line_height_opt {
+                                height += line_height;
+                            } else {
+                                height += buffer.metrics().line_height;
+                            }
+                        }
                     }
                     None => (),
                 }
             }
-            let height = layout_lines as f32 * buffer.metrics().line_height;
 
-            buffer.set_metrics_and_size(
-                &mut font_system,
-                self.metrics,
-                Some(max_width),
-                Some(height),
-            );
+            buffer.set_size(&mut font_system, Some(max_width), Some(height));
 
             let size = Size::new(width, height);
 
@@ -157,7 +160,7 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
 
         let mut swash_cache = SWASH_CACHE.get().unwrap().lock().unwrap();
         let mut font_system = self.font_system.lock().unwrap();
-        let mut editor = self.syntax_editor.lock().unwrap();
+        let mut editor = self.editor.lock().unwrap();
 
         let scale_factor = style.scale_factor as f32;
 
@@ -340,106 +343,166 @@ impl<'a, Message> From<Markdown> for Element<'a, Message> {
     }
 }
 
-pub fn markdown_to_string(content: &str) -> (String, String) {
-    let mut result = String::new();
-    let mut language = String::new();
+fn metrics(font_size: f32) -> Metrics {
+    let line_height = (font_size * 1.4).ceil();
+    Metrics::new(font_size, line_height)
+}
+
+fn set_buffer_text<'a>(text: &'a str, font_system: &mut FontSystem, buffer: &mut Buffer) {
+    let attrs = Attrs::new();
+    attrs.family(Family::SansSerif);
+
+    let spans: Vec<(&'a str, Attrs)> = markdown_to_string(text, attrs);
+
+    buffer.set_rich_text(font_system, spans.iter().copied(), attrs, Shaping::Advanced)
+}
+
+pub fn markdown_to_string<'a, 'b>(content: &'a str, attrs: Attrs<'b>) -> Vec<(&'a str, Attrs<'b>)>
+where
+    'b: 'a,
+{
+    let mut result: Vec<(&'a str, Attrs)> = Vec::new();
+    // let mut language = String::new();
 
     for block in tokenize(content) {
-        let (text, lang) = parse_block(block);
+        result.extend(parse_block(block, attrs));
+        result.push(("\n", attrs));
 
-        result.push_str(&format!("{}\n", text));
+        // result.push_str(&format!("{}\n", text));
 
-        if language.is_empty() {
-            language.push_str(&lang)
-        }
+        // if language.is_empty() {
+        //     language.push_str(&lang)
+        // }
     }
 
-    (result, language)
+    // println!("{:?}", result);
+
+    result
 }
 
-fn parse_block(block: Block) -> (String, String) {
-    let mut result = String::new();
-    let mut language = String::new();
+fn parse_block<'a, 'b>(block: Block, attrs: Attrs<'b>) -> Vec<(&'a str, Attrs<'b>)>
+where
+    'b: 'a,
+{
+    let mut result: Vec<(&'a str, Attrs)> = Vec::new();
 
     match block {
-        markdown::Block::Header(header, _len) => {
-            if !header.is_empty() {
-                for span in header {
-                    result.push_str(&format!("{}\n", parse_span(span)))
-                }
-            }
-        }
-        markdown::Block::Paragraph(para) => {
-            if !para.is_empty() {
-                for span in para {
-                    result.push_str(&parse_span(span))
-                }
-            }
-        }
-        markdown::Block::Blockquote(block) => {
-            if !block.is_empty() {
-                for block in block {
-                    let (text, lang) = parse_block(block);
-
-                    result.push_str(&text);
-
-                    if language.is_empty() {
-                        language.push_str(language_to_extension(lang));
+        Block::Header(span, level) => {
+            for item in span {
+                match level {
+                    1 => {
+                        let attrs = attrs.metrics(metrics(24.0));
+                        attrs.weight(Weight::BOLD);
+                        result.extend(parse_span(item, attrs));
                     }
+                    2 => {
+                        let attrs = attrs.metrics(metrics(22.0));
+                        attrs.weight(Weight::BOLD);
+                        result.extend(parse_span(item, attrs));
+                    }
+                    3 => {
+                        let attrs = attrs.metrics(metrics(20.0));
+                        attrs.weight(Weight::BOLD);
+                        result.extend(parse_span(item, attrs));
+                    }
+                    4 => {
+                        let attrs = attrs.metrics(metrics(18.0));
+                        attrs.weight(Weight::BOLD);
+                        result.extend(parse_span(item, attrs));
+                    }
+                    5 => {
+                        let attrs = attrs.metrics(metrics(16.0));
+                        attrs.weight(Weight::BOLD);
+                        result.extend(parse_span(item, attrs));
+                    }
+                    6 => {
+                        let attrs = attrs.metrics(metrics(14.0));
+                        attrs.weight(Weight::BOLD);
+                        result.extend(parse_span(item, attrs));
+                    }
+                    _ => result.extend(parse_span(item, attrs)),
                 }
             }
+            result.push(("\n", attrs));
         }
-        markdown::Block::CodeBlock(lang, code) => {
+        Block::Paragraph(span) => {
+            for item in span {
+                result.extend(parse_span(item, attrs));
+            }
+        }
+        Block::Blockquote(blockquote) => {
+            for item in blockquote {
+                let attrs = attrs.family(Family::Monospace);
+                result.extend(parse_block(item, attrs));
+            }
+            result.push(("\n", attrs));
+        }
+        Block::CodeBlock(lang, code) => {
             if let Some(lang) = lang {
-                if language.is_empty() {
-                    language.push_str(language_to_extension(lang));
-                }
-            }
-            result.push_str(&format!("\n{}\n", code));
-        }
-        markdown::Block::OrderedList(listitem, _listtype) => {
-            if !listitem.is_empty() {
-                for (num, item) in listitem.into_iter().enumerate() {
-                    let text = parse_listitem(item);
+                let code_block = highlight_code(
+                    Box::leak(code.into_boxed_str()),
+                    language_to_extension(lang),
+                    attrs,
+                );
 
-                    result.push_str(&format!("\n{}. {}", num + 1, text));
-                }
-            }
-        }
-        markdown::Block::UnorderedList(listitem) => {
-            if !listitem.is_empty() {
-                for item in listitem {
-                    let text = parse_listitem(item);
+                result.extend(code_block);
+            } else {
+                result.push((Box::leak(code.into_boxed_str()), attrs));
+            };
 
-                    result.push_str(&format!("\n - {}", text));
-                }
-            }
+            result.push(("\n", attrs));
         }
-        markdown::Block::Raw(raw) => result.push_str(&raw),
-        markdown::Block::Hr => result.push('\n'),
+        Block::OrderedList(listitem, _type) => {
+            for (num, item) in listitem.iter().enumerate() {
+                let attrs = attrs.family(Family::Serif);
+                result.push((Box::leak(format!("{}. ", num + 1).into_boxed_str()), attrs));
+                result.extend(parse_listitem(item.to_owned(), attrs));
+                result.push(("\n", attrs));
+            }
+            result.push(("\n", attrs));
+        }
+        Block::UnorderedList(listitem) => {
+            for item in listitem {
+                let attrs = attrs.family(Family::Serif);
+                result.push((" - ", attrs));
+                result.extend(parse_listitem(item.to_owned(), attrs));
+                result.push(("\n", attrs));
+            }
+            result.push(("\n", attrs));
+        }
+        Block::Raw(raw_text) => {
+            result.push((Box::leak(raw_text.into_boxed_str()), attrs));
+
+            result.push(("\n", attrs));
+        }
+        Block::Hr => result.push(("\n", attrs)),
     }
 
-    (result, language)
+    result
 }
 
-fn parse_listitem(listitem: ListItem) -> String {
-    let mut result = String::new();
+fn parse_span<'a>(span: Span, attrs: Attrs<'a>) -> Vec<(&'a str, Attrs)> {
+    let mut result: Vec<(&'a str, Attrs)> = Vec::new();
 
-    match listitem {
-        ListItem::Simple(simple) => {
-            if !simple.is_empty() {
-                for span in simple {
-                    result.push_str(&format!("  {}", parse_span(span)))
-                }
+    match span {
+        Span::Break => result.push(("\n", attrs)),
+        Span::Text(text) => result.push((Box::leak(text.into_boxed_str()), attrs)),
+        Span::Code(code) => {
+            attrs.family(Family::Monospace);
+            result.push((Box::leak(code.into_boxed_str()), attrs));
+        }
+        Span::Link(_, _, _) => {}
+        Span::Image(_, _, _) => {}
+        Span::Emphasis(emphasis) => {
+            for item in emphasis {
+                let attrs = attrs.family(Family::Cursive);
+                result.extend(parse_span(item, attrs));
             }
         }
-        ListItem::Paragraph(para) => {
-            if !para.is_empty() {
-                for block in para {
-                    let (text, _lang) = parse_block(block);
-
-                    result.push_str(&text);
-                }
+        Span::Strong(strong) => {
+            for item in strong {
+                let attrs = attrs.weight(Weight::BOLD);
+                result.extend(parse_span(item, attrs));
             }
         }
     }
@@ -447,24 +510,46 @@ fn parse_listitem(listitem: ListItem) -> String {
     result
 }
 
-fn parse_span(span: Span) -> String {
-    let mut result = String::new();
+fn parse_listitem<'a>(item: ListItem, attrs: Attrs<'a>) -> Vec<(&'a str, Attrs)> {
+    let mut result: Vec<(&'a str, Attrs)> = Vec::new();
 
-    match span {
-        markdown::Span::Break => result.push('\n'),
-        markdown::Span::Text(text) => result.push_str(&text),
-        markdown::Span::Code(code) => result.push_str(&code),
-        markdown::Span::Link(_, _, _) => {}
-        markdown::Span::Image(_, _, _) => {}
-        markdown::Span::Emphasis(emphasis) => {
-            for span in emphasis {
-                result.push_str(&parse_span(span));
+    match item {
+        ListItem::Simple(simple) => {
+            for item in simple {
+                result.extend(parse_span(item, attrs));
             }
         }
-        markdown::Span::Strong(strong) => {
-            for span in strong {
-                result.push_str(&parse_span(span));
+        ListItem::Paragraph(block) => {
+            for item in block {
+                result.extend(parse_block(item, attrs));
             }
+        }
+    }
+
+    result
+}
+
+fn highlight_code<'a>(
+    code: &'a str,
+    extension: &str,
+    attrs: Attrs<'a>,
+) -> Vec<(&'a str, Attrs<'a>)> {
+    let mut result: Vec<(&'a str, Attrs)> = Vec::new();
+
+    let ps = SyntaxSet::load_defaults_newlines();
+    let ts = ThemeSet::load_defaults();
+
+    let syntax = ps.find_syntax_by_extension(extension).unwrap();
+    let mut h = HighlightLines::new(syntax, &ts.themes[syntax_theme()]);
+    for line in LinesWithEndings::from(code) {
+        let ranges: Vec<(Style, &str)> = h.highlight_line(line, &ps).unwrap();
+
+        for (style, text) in ranges {
+            let fg = style.foreground;
+            let color = Color::rgb(fg.r, fg.g, fg.b);
+
+            let attrs = attrs.color(color);
+            result.push((text, attrs));
         }
     }
 
@@ -514,6 +599,6 @@ fn language_to_extension(lang: String) -> &'static str {
         "groovy" => "groovy",
         "ada" => "adb",
         "markdown" => "md",
-        _ => "",
+        _ => "txt",
     }
 }
