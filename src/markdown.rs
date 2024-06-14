@@ -32,6 +32,14 @@ fn syntax_theme() -> &'static str {
     "base16-ocean.dark"
 }
 
+fn text_color() -> Color {
+    if !cosmic::theme::is_dark() {
+        return cosmic_text::Color(0x000000);
+    }
+
+    cosmic_text::Color(0xFFFFFF)
+}
+
 pub struct Markdown {
     editor: Mutex<Editor<'static>>,
     font_system: &'static Mutex<FontSystem>,
@@ -205,7 +213,7 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
                 buffer.draw(
                     &mut font_system,
                     &mut swash_cache,
-                    cosmic_text::Color(0xFFFFFF),
+                    text_color(),
                     |x, y, w, h, color| {
                         draw_rect(
                             pixels,
