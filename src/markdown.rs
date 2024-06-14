@@ -32,20 +32,22 @@ pub struct Markdown {
 }
 
 impl Markdown {
-    pub fn new(content: String, syntax_ext: &str) -> Self {
+    pub fn new(content: String) -> Self {
         let metrics = Metrics::new(14.0, 20.0);
         let mut font_system = FONT_SYSTEM.get().unwrap().lock().unwrap();
         let mut buffer = Buffer::new(&mut font_system, metrics);
         let syntax_system = SYNTAX_SYSTEM.get().unwrap();
 
+        let (text, lang) = markdown_to_string(&content);
+
         buffer.borrow_with(&mut font_system).set_text(
-            &content,
+            &text,
             Attrs::new(),
             cosmic_text::Shaping::Advanced,
         );
 
         let mut editor = SyntaxEditor::new(buffer, syntax_system, syntax_theme()).unwrap();
-        editor.syntax_by_extension(syntax_ext);
+        editor.syntax_by_extension(&lang);
 
         Self {
             syntax_editor: Mutex::new(editor),
@@ -100,6 +102,14 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
         editor.with_buffer_mut(|buffer| {
             let mut layout_lines = 0;
             let mut width = 0.0;
+
+            buffer.set_size(
+                &mut font_system,
+                Some(max_width),
+                Some(buffer.metrics().line_height),
+            );
+
+            buffer.set_wrap(&mut font_system, cosmic_text::Wrap::Word);
 
             for line in buffer.lines.iter() {
                 match line.layout_opt() {
@@ -320,8 +330,8 @@ fn draw_rect(
     }
 }
 
-pub fn markdown(content: String, syntax_ext: &str) -> Markdown {
-    Markdown::new(content, syntax_ext)
+pub fn markdown(content: String) -> Markdown {
+    Markdown::new(content)
 }
 
 impl<'a, Message> From<Markdown> for Element<'a, Message> {
@@ -337,7 +347,7 @@ pub fn markdown_to_string(content: &str) -> (String, String) {
     for block in tokenize(content) {
         let (text, lang) = parse_block(block);
 
-        result.push_str(&text);
+        result.push_str(&format!("{}\n", text));
 
         if language.is_empty() {
             language.push_str(&lang)
@@ -355,7 +365,7 @@ fn parse_block(block: Block) -> (String, String) {
         markdown::Block::Header(header, _len) => {
             if !header.is_empty() {
                 for span in header {
-                    result.push_str(&parse_span(span))
+                    result.push_str(&format!("{}\n", parse_span(span)))
                 }
             }
         }
@@ -381,8 +391,6 @@ fn parse_block(block: Block) -> (String, String) {
         }
         markdown::Block::CodeBlock(lang, code) => {
             if let Some(lang) = lang {
-                // result.push_str(&format!("{} code:\n", lang));
-
                 if language.is_empty() {
                     language.push_str(language_to_extension(lang));
                 }
@@ -391,10 +399,10 @@ fn parse_block(block: Block) -> (String, String) {
         }
         markdown::Block::OrderedList(listitem, _listtype) => {
             if !listitem.is_empty() {
-                for item in listitem {
+                for (num, item) in listitem.into_iter().enumerate() {
                     let text = parse_listitem(item);
 
-                    result.push_str(&format!("\n{}", text));
+                    result.push_str(&format!("\n{}. {}", num + 1, text));
                 }
             }
         }
@@ -403,7 +411,7 @@ fn parse_block(block: Block) -> (String, String) {
                 for item in listitem {
                     let text = parse_listitem(item);
 
-                    result.push_str(&format!("\n{}", text));
+                    result.push_str(&format!("\n - {}", text));
                 }
             }
         }
@@ -450,12 +458,12 @@ fn parse_span(span: Span) -> String {
         markdown::Span::Image(_, _, _) => {}
         markdown::Span::Emphasis(emphasis) => {
             for span in emphasis {
-                result.push_str(&format!("\n{}\n", parse_span(span)));
+                result.push_str(&parse_span(span));
             }
         }
         markdown::Span::Strong(strong) => {
             for span in strong {
-                result.push_str(&format!("\n{}\n", parse_span(span)));
+                result.push_str(&parse_span(span));
             }
         }
     }
@@ -465,6 +473,7 @@ fn parse_span(span: Span) -> String {
 
 fn language_to_extension(lang: String) -> &'static str {
     match lang.as_str() {
+        "markdown" => "md",
         "rust" => "rs",
         "python" => "py",
         _ => "",
