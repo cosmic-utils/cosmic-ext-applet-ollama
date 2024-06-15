@@ -24,42 +24,30 @@ use syntect::{
 
 use crate::{FONT_SYSTEM, SWASH_CACHE};
 
-fn syntax_theme() -> &'static str {
-    if !cosmic::theme::is_dark() {
-        return "base16-ocean.light";
-    }
-
-    "base16-ocean.dark"
-}
-
-fn text_color() -> Color {
-    if !cosmic::theme::is_dark() {
-        return cosmic_text::Color(0x000000);
-    }
-
-    cosmic_text::Color(0xFFFFFF)
-}
-
 pub struct Markdown {
-    editor: Mutex<Editor<'static>>,
+    syntax_editor: Mutex<Editor<'static>>,
     font_system: &'static Mutex<FontSystem>,
     margin: f32,
 }
 
 impl Markdown {
-    pub fn new(content: String) -> Self {
+    pub fn new(content: &str) -> Self {
         let metrics = metrics(14.0);
         let font_system = FONT_SYSTEM.get().unwrap();
         let buffer = Buffer::new_empty(metrics);
 
         let mut editor = Editor::new(buffer);
+        let mut parser = Parser::new();
+        let blocks = tokenize(content);
+
+        parser.run(Box::leak(Box::new(blocks)));
 
         editor.with_buffer_mut(|buffer| {
-            set_buffer_text(&content, &mut font_system.lock().unwrap(), buffer)
+            set_buffer_text(&mut font_system.lock().unwrap(), &mut parser.spans, buffer)
         });
 
         Self {
-            editor: Mutex::new(editor),
+            syntax_editor: Mutex::new(editor),
             font_system,
             margin: 0.0,
         }
@@ -104,7 +92,7 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
         let mut font_system = self.font_system.lock().unwrap();
         let max_width = limits.max().width - self.margin;
 
-        let mut editor = self.editor.lock().unwrap();
+        let mut editor = self.syntax_editor.lock().unwrap();
         editor.borrow_with(&mut font_system).shape_as_needed(true);
 
         editor.with_buffer_mut(|buffer| {
@@ -168,7 +156,7 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
 
         let mut swash_cache = SWASH_CACHE.get().unwrap().lock().unwrap();
         let mut font_system = self.font_system.lock().unwrap();
-        let mut editor = self.editor.lock().unwrap();
+        let mut editor = self.syntax_editor.lock().unwrap();
 
         let scale_factor = style.scale_factor as f32;
 
@@ -213,7 +201,7 @@ impl<Message> Widget<Message, cosmic::Theme, Renderer> for Markdown {
                 buffer.draw(
                     &mut font_system,
                     &mut swash_cache,
-                    text_color(),
+                    cosmic_text::Color(0xFFFFFF),
                     |x, y, w, h, color| {
                         draw_rect(
                             pixels,
@@ -341,7 +329,7 @@ fn draw_rect(
     }
 }
 
-pub fn markdown(content: String) -> Markdown {
+pub fn markdown(content: &str) -> Markdown {
     Markdown::new(content)
 }
 
@@ -356,185 +344,184 @@ fn metrics(font_size: f32) -> Metrics {
     Metrics::new(font_size, line_height)
 }
 
-fn set_buffer_text<'a>(text: &'a str, font_system: &mut FontSystem, buffer: &mut Buffer) {
+fn set_buffer_text(
+    font_system: &mut FontSystem,
+    collect_spans: &mut [(&'static str, Attrs)],
+    buffer: &mut Buffer,
+) {
     let attrs = Attrs::new();
     attrs.family(Family::SansSerif);
 
-    let spans: Vec<(&'a str, Attrs)> = markdown_to_string(text, attrs);
-
-    buffer.set_rich_text(font_system, spans.iter().copied(), attrs, Shaping::Advanced)
+    buffer.set_rich_text(
+        font_system,
+        collect_spans.iter().copied(),
+        attrs,
+        Shaping::Advanced,
+    )
 }
 
-pub fn markdown_to_string<'a, 'b>(content: &'a str, attrs: Attrs<'b>) -> Vec<(&'a str, Attrs<'b>)>
+struct Parser<'a, 'b> {
+    spans: Vec<(&'a str, Attrs<'b>)>,
+}
+
+impl<'a, 'b> Parser<'a, 'b>
 where
     'b: 'a,
 {
-    let mut result: Vec<(&'a str, Attrs)> = Vec::new();
-    // let mut language = String::new();
-
-    for block in tokenize(content) {
-        result.extend(parse_block(block, attrs));
-        result.push(("\n", attrs));
-
-        // result.push_str(&format!("{}\n", text));
-
-        // if language.is_empty() {
-        //     language.push_str(&lang)
-        // }
+    pub fn new() -> Self {
+        Self { spans: Vec::new() }
     }
 
-    // println!("{:?}", result);
+    pub fn run<'block>(&mut self, block: &'block Vec<Block>)
+    where
+        'block: 'b,
+    {
+        for block in block {
+            self.parse_block(block, Attrs::new());
+            self.spans.push(("\n", Attrs::new()));
+        }
+    }
 
-    result
-}
+    fn parse_block<'block>(&mut self, block: &'block Block, attrs: Attrs<'block>)
+    where
+        'block: 'b,
+    {
+        match block {
+            Block::Header(span, level) => {
+                for item in span {
+                    match level {
+                        1 => {
+                            let attrs = attrs.metrics(metrics(24.0));
+                            attrs.weight(Weight::BOLD);
+                            self.parse_span(item, attrs);
+                        }
+                        2 => {
+                            let attrs = attrs.metrics(metrics(22.0));
+                            attrs.weight(Weight::BOLD);
+                            self.parse_span(item, attrs);
+                        }
+                        3 => {
+                            let attrs = attrs.metrics(metrics(20.0));
+                            attrs.weight(Weight::BOLD);
+                            self.parse_span(item, attrs);
+                        }
+                        4 => {
+                            let attrs = attrs.metrics(metrics(18.0));
+                            attrs.weight(Weight::BOLD);
+                            self.parse_span(item, attrs);
+                        }
+                        5 => {
+                            let attrs = attrs.metrics(metrics(16.0));
+                            attrs.weight(Weight::BOLD);
+                            self.parse_span(item, attrs);
+                        }
+                        6 => {
+                            let attrs = attrs.metrics(metrics(14.0));
+                            attrs.weight(Weight::BOLD);
+                            self.parse_span(item, attrs);
+                        }
+                        _ => self.parse_span(item, Attrs::new()),
+                    }
+                }
+                self.spans.push(("\n", Attrs::new()));
+            }
+            Block::Paragraph(span) => {
+                for item in span {
+                    self.parse_span(item, attrs);
+                }
+                self.spans.push(("\n", Attrs::new()));
+            }
+            Block::Blockquote(blockquote) => {
+                for item in blockquote {
+                    let attrs = attrs.family(Family::Monospace);
+                    self.parse_block(item, attrs);
+                }
+                self.spans.push(("\n", Attrs::new()));
+            }
+            Block::CodeBlock(lang, code) => {
+                let extension = if let Some(lang) = lang {
+                    language_to_extension(lang)
+                } else {
+                    "txt"
+                };
 
-fn parse_block<'a, 'b>(block: Block, attrs: Attrs<'b>) -> Vec<(&'a str, Attrs<'b>)>
-where
-    'b: 'a,
-{
-    let mut result: Vec<(&'a str, Attrs)> = Vec::new();
+                let attrs = attrs.family(Family::Monospace);
+                let code_block = highlight_code(code, extension, attrs);
 
-    match block {
-        Block::Header(span, level) => {
-            for item in span {
-                match level {
-                    1 => {
-                        let attrs = attrs.metrics(metrics(24.0));
-                        attrs.weight(Weight::BOLD);
-                        result.extend(parse_span(item, attrs));
-                    }
-                    2 => {
-                        let attrs = attrs.metrics(metrics(22.0));
-                        attrs.weight(Weight::BOLD);
-                        result.extend(parse_span(item, attrs));
-                    }
-                    3 => {
-                        let attrs = attrs.metrics(metrics(20.0));
-                        attrs.weight(Weight::BOLD);
-                        result.extend(parse_span(item, attrs));
-                    }
-                    4 => {
-                        let attrs = attrs.metrics(metrics(18.0));
-                        attrs.weight(Weight::BOLD);
-                        result.extend(parse_span(item, attrs));
-                    }
-                    5 => {
-                        let attrs = attrs.metrics(metrics(16.0));
-                        attrs.weight(Weight::BOLD);
-                        result.extend(parse_span(item, attrs));
-                    }
-                    6 => {
-                        let attrs = attrs.metrics(metrics(14.0));
-                        attrs.weight(Weight::BOLD);
-                        result.extend(parse_span(item, attrs));
-                    }
-                    _ => result.extend(parse_span(item, attrs)),
+                self.spans.extend(code_block);
+                self.spans.push(("\n", attrs));
+            }
+            Block::OrderedList(listitem, _type) => {
+                for item in listitem.iter() {
+                    let attrs = attrs.family(Family::Serif);
+                    self.spans.push((" - ", attrs));
+                    self.parse_listitem(item);
+                    self.spans.push(("\n", attrs));
+                }
+                self.spans.push(("\n", Attrs::new()));
+            }
+            Block::UnorderedList(listitem) => {
+                for item in listitem {
+                    let attrs = attrs.family(Family::Serif);
+                    self.spans.push((" - ", attrs));
+                    self.parse_listitem(item);
+                    self.spans.push(("\n", attrs));
+                }
+                self.spans.push(("\n", Attrs::new()));
+            }
+            Block::Raw(raw_text) => {
+                self.spans.push((raw_text, Attrs::new()));
+                self.spans.push(("\n", Attrs::new()));
+            }
+            Block::Hr => self.spans.push(("\n", Attrs::new())),
+        }
+    }
+
+    fn parse_span<'c>(&mut self, span: &'c Span, attrs: Attrs<'c>)
+    where
+        'c: 'b,
+    {
+        match span {
+            Span::Break => self.spans.push(("\n", attrs)),
+            Span::Text(text) => self.spans.push((text, attrs)),
+            Span::Code(code) => {
+                let attrs = attrs.family(Family::Monospace);
+                self.spans.push((code, attrs));
+            }
+            Span::Link(_, _, _) => {}
+            Span::Image(_, _, _) => {}
+            Span::Emphasis(emphasis) => {
+                for item in emphasis {
+                    let attrs = attrs.family(Family::Cursive);
+                    self.parse_span(item, attrs);
                 }
             }
-            result.push(("\n", attrs));
-        }
-        Block::Paragraph(span) => {
-            for item in span {
-                result.extend(parse_span(item, attrs));
-            }
-        }
-        Block::Blockquote(blockquote) => {
-            for item in blockquote {
-                let attrs = attrs.family(Family::Monospace);
-                result.extend(parse_block(item, attrs));
-            }
-            result.push(("\n", attrs));
-        }
-        Block::CodeBlock(lang, code) => {
-            if let Some(lang) = lang {
-                let code_block = highlight_code(
-                    Box::leak(code.into_boxed_str()),
-                    language_to_extension(lang),
-                    attrs,
-                );
-
-                result.extend(code_block);
-            } else {
-                result.push((Box::leak(code.into_boxed_str()), attrs));
-            };
-
-            result.push(("\n", attrs));
-        }
-        Block::OrderedList(listitem, _type) => {
-            for (num, item) in listitem.iter().enumerate() {
-                let attrs = attrs.family(Family::Serif);
-                result.push((Box::leak(format!("{}. ", num + 1).into_boxed_str()), attrs));
-                result.extend(parse_listitem(item.to_owned(), attrs));
-                result.push(("\n", attrs));
-            }
-            result.push(("\n", attrs));
-        }
-        Block::UnorderedList(listitem) => {
-            for item in listitem {
-                let attrs = attrs.family(Family::Serif);
-                result.push((" - ", attrs));
-                result.extend(parse_listitem(item.to_owned(), attrs));
-                result.push(("\n", attrs));
-            }
-            result.push(("\n", attrs));
-        }
-        Block::Raw(raw_text) => {
-            result.push((Box::leak(raw_text.into_boxed_str()), attrs));
-
-            result.push(("\n", attrs));
-        }
-        Block::Hr => result.push(("\n", attrs)),
-    }
-
-    result
-}
-
-fn parse_span<'a>(span: Span, attrs: Attrs<'a>) -> Vec<(&'a str, Attrs)> {
-    let mut result: Vec<(&'a str, Attrs)> = Vec::new();
-
-    match span {
-        Span::Break => result.push(("\n", attrs)),
-        Span::Text(text) => result.push((Box::leak(text.into_boxed_str()), attrs)),
-        Span::Code(code) => {
-            attrs.family(Family::Monospace);
-            result.push((Box::leak(code.into_boxed_str()), attrs));
-        }
-        Span::Link(_, _, _) => {}
-        Span::Image(_, _, _) => {}
-        Span::Emphasis(emphasis) => {
-            for item in emphasis {
-                let attrs = attrs.family(Family::Cursive);
-                result.extend(parse_span(item, attrs));
-            }
-        }
-        Span::Strong(strong) => {
-            for item in strong {
-                let attrs = attrs.weight(Weight::BOLD);
-                result.extend(parse_span(item, attrs));
+            Span::Strong(strong) => {
+                for item in strong {
+                    let attrs = attrs.weight(Weight::BOLD);
+                    self.parse_span(item, attrs);
+                }
             }
         }
     }
 
-    result
-}
-
-fn parse_listitem<'a>(item: ListItem, attrs: Attrs<'a>) -> Vec<(&'a str, Attrs)> {
-    let mut result: Vec<(&'a str, Attrs)> = Vec::new();
-
-    match item {
-        ListItem::Simple(simple) => {
-            for item in simple {
-                result.extend(parse_span(item, attrs));
+    fn parse_listitem<'d>(&mut self, item: &'d ListItem)
+    where
+        'd: 'b,
+    {
+        match item {
+            ListItem::Simple(simple) => {
+                for item in simple {
+                    self.parse_span(item, Attrs::new());
+                }
             }
-        }
-        ListItem::Paragraph(block) => {
-            for item in block {
-                result.extend(parse_block(item, attrs));
+            ListItem::Paragraph(block) => {
+                for item in block {
+                    self.parse_block(item, Attrs::new());
+                }
             }
         }
     }
-
-    result
 }
 
 fn highlight_code<'a>(
@@ -548,7 +535,7 @@ fn highlight_code<'a>(
     let ts = ThemeSet::load_defaults();
 
     let syntax = ps.find_syntax_by_extension(extension).unwrap();
-    let mut h = HighlightLines::new(syntax, &ts.themes[syntax_theme()]);
+    let mut h = HighlightLines::new(syntax, &ts.themes["base16-ocean.dark"]);
     for line in LinesWithEndings::from(code) {
         let ranges: Vec<(Style, &str)> = h.highlight_line(line, &ps).unwrap();
 
@@ -564,8 +551,8 @@ fn highlight_code<'a>(
     result
 }
 
-fn language_to_extension(lang: String) -> &'static str {
-    match lang.as_str() {
+fn language_to_extension(lang: &str) -> &'static str {
+    match lang {
         "python" => "py",
         "javascript" => "js",
         "java" => "java",

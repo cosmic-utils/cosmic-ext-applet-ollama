@@ -602,7 +602,7 @@ impl Window {
     }
 
     fn bot_bubble(&self, message: String) -> Element<Message> {
-        let mut text = markdown(message.clone());
+        let mut text = markdown(&message);
         text.margin(57.0);
 
         let ai = widget::Container::new(text)
@@ -635,7 +635,7 @@ impl Window {
             },
             MessageContent::Text(txt) => {
                 if !txt.is_empty() {
-                    let mut markdown = markdown(txt.clone());
+                    let mut markdown = markdown(txt);
                     markdown.margin(48.0);
                     column = column.push(markdown)
                 }
