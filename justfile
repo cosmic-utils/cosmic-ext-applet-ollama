@@ -34,7 +34,7 @@ _link_applet name:
     ln -sf {{cosmic-applets-bin}} {{bindir}}/{{name}}
 
 _install_icon:
-    install -Dm0644 'data/icons/scalable/apps/io.github.elevenhsoft.CosmicExtAppletOllama-symbolic.svg' {{iconsdir}}/
+    install -Dm0644 'data/icons/scalable/apps/io.github.elevenhsoft.CosmicExtAppletOllama-symbolic.svg' {{iconsdir}}/io.github.elevenhsoft.CosmicExtAppletOllama-symbolic.svg
 
 _install_desktop path:
     install -Dm0644 {{path}} {{sharedir}}/applications/{{file_name(path)}}
