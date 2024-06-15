@@ -24,6 +24,14 @@ use syntect::{
 
 use crate::{FONT_SYSTEM, SWASH_CACHE};
 
+fn syntax_theme() -> &'static str {
+    if !cosmic::theme::is_dark() {
+        return "base16-ocean.light";
+    }
+
+    "base16-ocean.dark"
+}
+
 pub struct Markdown {
     syntax_editor: Mutex<Editor<'static>>,
     font_system: &'static Mutex<FontSystem>,
@@ -535,7 +543,7 @@ fn highlight_code<'a>(
     let ts = ThemeSet::load_defaults();
 
     let syntax = ps.find_syntax_by_extension(extension).unwrap();
-    let mut h = HighlightLines::new(syntax, &ts.themes["base16-ocean.dark"]);
+    let mut h = HighlightLines::new(syntax, &ts.themes[syntax_theme()]);
     for line in LinesWithEndings::from(code) {
         let ranges: Vec<(Style, &str)> = h.highlight_line(line, &ps).unwrap();
 
