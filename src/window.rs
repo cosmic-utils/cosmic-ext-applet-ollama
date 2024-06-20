@@ -186,7 +186,10 @@ impl Application for Window {
 
     fn update(&mut self, message: Message) -> Command<CosmicMessage<Message>> {
         match message {
-            Message::ChatPage => self.page = Pages::Chat,
+            Message::ChatPage => {
+                self.page = Pages::Chat;
+                return snap_to(self.chat_id.clone(), RelativeOffset::END);
+            }
             Message::SettingsPage => {
                 self.page = Pages::Settings;
 
@@ -210,7 +213,7 @@ impl Application for Window {
                     popup_settings.positioner.size_limits =
                         iced::Limits::NONE.width(680.0).height(800.0);
                     get_popup(popup_settings)
-                }
+                };
             }
             Message::EnterPrompt(prompt) => self.prompt = prompt,
             Message::SendPrompt => {
