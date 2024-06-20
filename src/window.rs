@@ -15,7 +15,7 @@ use cosmic::{
         Scrollable,
     },
     theme,
-    widget::{self, settings},
+    widget::{self, settings, text},
     Application, Command, Element,
 };
 use std::path::PathBuf;
@@ -701,10 +701,10 @@ impl Window {
     fn menu_bar(&self) -> Element<Message> {
         settings::view_section("")
             .add(settings::item_row(vec![
-                widget::button::standard(fl!("chat"))
+                widget::button(widget::container(text(fl!("chat"))).center_x())
                     .on_press(Message::ChatPage)
                     .into(),
-                widget::button::standard(fl!("settings"))
+                widget::button(widget::container(text(fl!("settings"))).center_x())
                     .width(100)
                     .on_press(Message::SettingsPage)
                     .into(),
