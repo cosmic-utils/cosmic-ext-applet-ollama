@@ -37,9 +37,7 @@ pub struct BotResponse {
 }
 
 #[derive(Debug)]
-pub struct Bot {
-    pub prompt: String,
-}
+pub struct Bot {}
 
 impl Bot {
     pub async fn new(
@@ -85,9 +83,7 @@ impl Bot {
                 .bytes_stream()
         };
 
-        let bot = Self {
-            prompt: String::new(),
-        };
+        let bot = Self {};
 
         Ok((bot, stream))
     }
@@ -101,15 +97,10 @@ pub struct PullModelQuery {
 #[derive(Debug, Clone, Deserialize)]
 pub struct PullModelResponse {
     pub status: String,
-    pub digest: Option<String>,
-    pub total: Option<u64>,
-    pub completed: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
-pub struct PullModel {
-    pub model: String,
-}
+pub struct PullModel {}
 
 impl PullModel {
     pub async fn new(
@@ -130,9 +121,7 @@ impl PullModel {
             .unwrap()
             .bytes_stream();
 
-        let pull = Self {
-            model: String::new(),
-        };
+        let pull = Self {};
 
         Ok((pull, stream))
     }
@@ -144,9 +133,7 @@ pub struct RemoveModelQuery {
 }
 
 #[derive(Debug, Clone)]
-pub struct RemoveModel {
-    pub model: String,
-}
+pub struct RemoveModel {}
 
 impl RemoveModel {
     pub async fn new(model: String) -> anyhow::Result<(Self, StatusCode)> {
@@ -161,9 +148,7 @@ impl RemoveModel {
             .await?
             .status();
 
-        let remove = RemoveModel {
-            model: String::new(),
-        };
+        let remove = RemoveModel {};
 
         Ok((remove, request))
     }
