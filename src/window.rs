@@ -466,7 +466,7 @@ impl Window {
             .width(Length::Fill);
 
         let open_images = widget::button(
-            widget::Container::new(widget::icon::from_name("insert-image-symbolic"))
+            widget::Container::new(widget::icon::from_name("mail-attachment-symbolic"))
                 .width(32)
                 .height(32)
                 .center_x()
