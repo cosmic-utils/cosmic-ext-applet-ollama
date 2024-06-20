@@ -450,11 +450,9 @@ impl Window {
 
         chat = chat.push(self.chat_messages(&self.conversation));
 
-        chat = chat.push(self.bot_bubble(if self.bot_response.is_empty() {
-            String::from("...")
-        } else {
-            self.bot_response.clone()
-        }));
+        if !self.bot_response.is_empty() {
+            chat = chat.push(self.bot_bubble(self.bot_response.clone()));
+        }
 
         for message in &self.system_messages {
             chat = chat.push(self.system_bubble(message.to_string()))
