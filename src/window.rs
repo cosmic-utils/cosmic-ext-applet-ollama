@@ -8,7 +8,7 @@ use cosmic::{
         id,
         wayland::popup::{destroy_popup, get_popup},
         window::Id,
-        Length, Subscription,
+        Length, Padding, Subscription,
     },
     iced_widget::{
         scrollable::{snap_to, RelativeOffset},
@@ -704,13 +704,29 @@ impl Window {
     fn menu_bar(&self) -> Element<Message> {
         settings::view_section("")
             .add(settings::item_row(vec![
-                widget::button(widget::container(text(fl!("chat"))).center_x())
-                    .on_press(Message::ChatPage)
-                    .into(),
-                widget::button(widget::container(text(fl!("settings"))).center_x())
-                    .width(100)
-                    .on_press(Message::SettingsPage)
-                    .into(),
+                widget::button(
+                    widget::container(text(fl!("chat")))
+                        .center_x()
+                        .padding(Padding {
+                            left: 12.0,
+                            right: 12.0,
+                            top: 0.0,
+                            bottom: 0.0,
+                        }),
+                )
+                .on_press(Message::ChatPage)
+                .into(),
+                widget::button(widget::container(text(fl!("settings"))).center_x().padding(
+                    Padding {
+                        left: 12.0,
+                        right: 12.0,
+                        top: 0.0,
+                        bottom: 0.0,
+                    },
+                ))
+                .width(100)
+                .on_press(Message::SettingsPage)
+                .into(),
                 widget::dropdown(&self.models, self.model_index, Message::ChangeModel)
                     .width(Length::Fill)
                     .into(),
