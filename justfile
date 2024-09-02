@@ -25,7 +25,10 @@ build-debug *args:
     cargo build {{args}}
 
 # Compiles with release profile
-build-release *args: (build-debug '--release' args)
+build-release *args: (build-debug '--release --features wgpu' args)
+
+# Compiles with release profile with wgpu disabled
+build-no-wpgu *args: (build-debug '--release' args)
 
 # Compile with a vendored tarball
 build-vendored *args: vendor-extract (build-release '--frozen --offline' args)
