@@ -373,6 +373,7 @@ fn set_buffer_text(
         collect_spans.iter().copied(),
         attrs,
         Shaping::Advanced,
+        None,
     )
 }
 
