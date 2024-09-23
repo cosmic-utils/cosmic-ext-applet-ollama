@@ -322,7 +322,6 @@ impl<'a, Message> Widget<Message, cosmic::Theme, Renderer> for Markdown<'a, Mess
 
                     if let Ok(editor) = self.syntax_editor.lock() {
                         let selection = editor.copy_selection();
-                        println!("{:?}", selection);
 
                         if let Some(text) = selection {
                             if let Some(on_copy) = &self.on_copy {
