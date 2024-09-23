@@ -236,6 +236,8 @@ impl<'a, Message> Widget<Message, cosmic::Theme, Renderer> for Markdown<'a, Mess
 
             if state.dragging {
                 editor.action(&mut font_system, cosmic_text::Action::Drag { x, y })
+            } else {
+                editor.action(&mut font_system, cosmic_text::Action::Click { x, y })
             }
         }
 
@@ -291,8 +293,8 @@ impl<'a, Message> Widget<Message, cosmic::Theme, Renderer> for Markdown<'a, Mess
         &mut self,
         state: &mut tree::Tree,
         event: cosmic::iced::Event,
-        layout: layout::Layout<'_>,
-        cursor: cosmic::iced_core::mouse::Cursor,
+        _layout: layout::Layout<'_>,
+        _cursor: cosmic::iced_core::mouse::Cursor,
         _renderer: &Renderer,
         _clipboard: &mut dyn cosmic::iced_core::Clipboard,
         shell: &mut cosmic::iced_core::Shell<'_, Message>,
@@ -303,18 +305,6 @@ impl<'a, Message> Widget<Message, cosmic::Theme, Renderer> for Markdown<'a, Mess
         if let event::Event::Mouse(ev) = event {
             match ev {
                 mouse::Event::ButtonPressed(_) => {
-                    if let Ok(ref mut editor) = self.syntax_editor.lock() {
-                        if let Some(position) = cursor.position_in(layout.bounds()) {
-                            let mut font_system = self.font_system.lock().unwrap();
-                            editor.action(
-                                &mut font_system,
-                                cosmic_text::Action::Click {
-                                    x: position.x as i32,
-                                    y: position.y as i32,
-                                },
-                            )
-                        }
-                    }
                     state.dragging = true;
                 }
                 mouse::Event::ButtonReleased(_) => {
