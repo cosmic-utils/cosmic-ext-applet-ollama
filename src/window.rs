@@ -10,6 +10,7 @@ use cosmic::{
         window::Id,
         Length, Subscription,
     },
+    iced_runtime::clipboard,
     iced_widget::{
         scrollable::{snap_to, RelativeOffset},
         Scrollable,
@@ -76,6 +77,7 @@ pub enum Message {
     OllamaAdressFlag(bool),
     OllamaAddressInput(String),
     OllamaAddressSend,
+    Clipboard(String),
 }
 
 pub struct Window {
@@ -185,10 +187,12 @@ impl Application for Window {
     }
 
     fn update(&mut self, message: Message) -> Command<CosmicMessage<Message>> {
+        let mut commands: Vec<Command<CosmicMessage<Message>>> = Vec::new();
+
         match message {
             Message::ChatPage => {
                 self.page = Pages::Chat;
-                return snap_to(self.chat_id.clone(), RelativeOffset::END);
+                commands.push(snap_to(self.chat_id.clone(), RelativeOffset::END));
             }
             Message::SettingsPage => {
                 self.page = Pages::Settings;
@@ -201,7 +205,7 @@ impl Application for Window {
                 }
             }
             Message::TogglePopup => {
-                return if let Some(p) = self.popup.take() {
+                commands.push(if let Some(p) = self.popup.take() {
                     destroy_popup(p)
                 } else {
                     let new_id = Id::unique();
@@ -213,7 +217,7 @@ impl Application for Window {
                     popup_settings.positioner.size_limits =
                         iced::Limits::NONE.width(680.0).height(800.0);
                     get_popup(popup_settings)
-                };
+                });
             }
             Message::EnterPrompt(prompt) => self.prompt = prompt,
             Message::SendPrompt => {
@@ -263,7 +267,7 @@ impl Application for Window {
                     self.bot_response.push_str(&message.response);
                     self.context = message.context;
 
-                    return snap_to(self.chat_id.clone(), RelativeOffset::END);
+                    commands.push(snap_to(self.chat_id.clone(), RelativeOffset::END));
                 }
                 stream::Event::Done => {
                     self.conversation
@@ -335,7 +339,7 @@ impl Application for Window {
                 self.request = StreamingRequest::RemoveModel;
             }
             Message::OpenImages => {
-                return Command::perform(
+                commands.push(Command::perform(
                     async move {
                         let result = SelectedFiles::open_file()
                             .title("Open multiple images")
@@ -360,7 +364,7 @@ impl Application for Window {
                         }
                     },
                     |files| cosmic::app::message::app(Message::ImagesResult(files)),
-                );
+                ));
             }
             Message::ImagesResult(result) => {
                 for image in result {
@@ -371,35 +375,33 @@ impl Application for Window {
                 }
             }
             Message::ModelPullInput(model) => self.model_to_pull = model,
-            Message::FindAvatar => {
-                return Command::perform(
-                    async move {
-                        let result = SelectedFiles::open_file()
-                            .title("Open image")
-                            .accept_label("Attach")
-                            .modal(true)
-                            .multiple(false)
-                            .filter(FileFilter::new("JPEG Image").glob("*.jpg"))
-                            .filter(FileFilter::new("PNG Image").glob("*.png"))
-                            .send()
-                            .await
-                            .unwrap()
-                            .response();
+            Message::FindAvatar => commands.push(Command::perform(
+                async move {
+                    let result = SelectedFiles::open_file()
+                        .title("Open image")
+                        .accept_label("Attach")
+                        .modal(true)
+                        .multiple(false)
+                        .filter(FileFilter::new("JPEG Image").glob("*.jpg"))
+                        .filter(FileFilter::new("PNG Image").glob("*.png"))
+                        .send()
+                        .await
+                        .unwrap()
+                        .response();
 
-                        if let Ok(result) = result {
-                            let path = result.uris().first().unwrap();
-                            if let Ok(path) = path.to_file_path() {
-                                path
-                            } else {
-                                PathBuf::new()
-                            }
+                    if let Ok(result) = result {
+                        let path = result.uris().first().unwrap();
+                        if let Ok(path) = path.to_file_path() {
+                            path
                         } else {
                             PathBuf::new()
                         }
-                    },
-                    |path| cosmic::app::message::app(Message::AvatarResult(path)),
-                )
-            }
+                    } else {
+                        PathBuf::new()
+                    }
+                },
+                |path| cosmic::app::message::app(Message::AvatarResult(path)),
+            )),
             Message::AvatarResult(path) => {
                 let handle = widget::image::Handle::from_path(&path);
                 self.user_avatar = handle;
@@ -413,9 +415,12 @@ impl Application for Window {
                     .set_ollama_address(self.ollama_address.clone());
                 let _ = self.settings.save();
             }
+            Message::Clipboard(selection) => {
+                commands.push(clipboard::write(selection));
+            }
         };
 
-        Command::none()
+        Command::batch(commands)
     }
 
     fn view(&self) -> Element<Self::Message> {
@@ -603,8 +608,7 @@ impl Window {
     }
 
     fn bot_bubble(&self, message: String) -> Element<Message> {
-        let mut text = markdown(&message);
-        text.margin(57.0);
+        let text = markdown(message).on_copy(Message::Clipboard);
 
         let ai = widget::Container::new(text)
             .padding(12)
@@ -636,7 +640,7 @@ impl Window {
             },
             MessageContent::Text(txt) => {
                 if !txt.is_empty() {
-                    let mut markdown = markdown(txt);
+                    let mut markdown = markdown(txt.clone()).on_copy(Message::Clipboard);
                     markdown.margin(48.0);
                     column = column.push(markdown)
                 }
