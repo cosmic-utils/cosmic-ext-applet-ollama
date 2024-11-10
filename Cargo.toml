@@ -35,7 +35,7 @@ markdown = "0.3.0"
 [dependencies.libcosmic]
 git = "https://github.com/pop-os/libcosmic"
 default-features = false
-features = ["applet", "tokio", "wayland", "clipboard"]
+features = ["applet","tokio", "wayland", "winit", "multi-window"]
 
 [features]
 default = ["wgpu"]

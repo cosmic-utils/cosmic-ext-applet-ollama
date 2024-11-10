@@ -1,10 +1,10 @@
+use futures::SinkExt;
 use std::hash::Hash;
 
 use cosmic::{
     iced::futures::{Stream, StreamExt},
     iced_futures::MaybeSend,
 };
-use futures::SinkExt;
 use tokio::sync::{mpsc, oneshot};
 
 use crate::api::{Bot, BotResponse, PullModel, PullModelResponse, RemoveModel};
@@ -31,16 +31,19 @@ pub enum Request {
 pub fn subscription<I: 'static + Hash + Copy + Send + Sync>(
     id: I,
 ) -> cosmic::iced::Subscription<Event> {
-    use cosmic::iced::subscription;
+    use cosmic::iced::{stream, Subscription};
 
-    subscription::channel(id, 1, |mut output| async move {
-        loop {
-            let mut responses = std::pin::pin!(service());
-            while let Some(message) = responses.next().await {
-                let _res = output.send(message).await;
+    Subscription::run_with_id(
+        id,
+        stream::channel(1, |mut output| async move {
+            loop {
+                let mut responses = std::pin::pin!(service());
+                while let Some(message) = responses.next().await {
+                    let _res = output.send(message).await;
+                }
             }
-        }
-    })
+        }),
+    )
 }
 
 pub fn service() -> impl Stream<Item = Event> + MaybeSend {

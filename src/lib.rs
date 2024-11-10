@@ -26,7 +26,7 @@ pub fn run() -> cosmic::iced::Result {
     FONT_SYSTEM.get_or_init(|| Mutex::new(FontSystem::new()));
     SWASH_CACHE.get_or_init(|| Mutex::new(SwashCache::new()));
 
-    cosmic::applet::run::<Window>(false, ())
+    cosmic::applet::run::<Window>(())
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -52,7 +52,7 @@ impl Settings {
             widget::image::Handle::from_path(&self.avatar)
         } else {
             let image: &[u8] = include_bytes!("../data/icons/avatar.png");
-            widget::image::Handle::from_memory(image)
+            widget::image::Handle::from_bytes(image)
         }
     }
 

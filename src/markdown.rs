@@ -4,7 +4,7 @@ use cosmic::{
     iced::{
         mouse::{self, ScrollDelta},
         Length::{self},
-        Size,
+        Radians, Size,
     },
     iced_core::{
         event, image, layout,
@@ -267,14 +267,14 @@ impl<'a, Message> Widget<Message, cosmic::Theme, Renderer> for Markdown<'a, Mess
             );
         }
 
-        *handle_opt = Some(image::Handle::from_pixels(
+        *handle_opt = Some(image::Handle::from_rgba(
             image_w as u32,
             image_h as u32,
             pixels_u8,
         ));
 
         if let Some(ref handle) = *handle_opt {
-            image::Renderer::draw(
+            image::Renderer::draw_image(
                 renderer,
                 handle.clone(),
                 image::FilterMethod::Nearest,
@@ -284,6 +284,8 @@ impl<'a, Message> Widget<Message, cosmic::Theme, Renderer> for Markdown<'a, Mess
                     width: image_w as f32,
                     height: image_h as f32,
                 },
+                Radians(0.0),
+                1.0,
                 [0.0; 4],
             );
         }

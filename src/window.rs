@@ -6,7 +6,7 @@ use cosmic::{
         self,
         alignment::Horizontal,
         id,
-        wayland::popup::{destroy_popup, get_popup},
+        platform_specific::shell::wayland::commands::popup::{destroy_popup, get_popup},
         window::Id,
         Length, Subscription,
     },
@@ -16,8 +16,8 @@ use cosmic::{
         Scrollable,
     },
     theme,
-    widget::{self, settings, text},
-    Application, Command, Element,
+    widget::{self, settings},
+    Application, Element, Task as Command,
 };
 use std::path::PathBuf;
 
@@ -200,7 +200,7 @@ impl Application for Window {
                 self.saved_conversations = read_conversation_files().unwrap();
             }
             Message::PopupClosed(id) => {
-                if self.popup.as_ref() == Some(&id) {
+                if Some(id) == self.popup {
                     self.popup = None;
                 }
             }
@@ -210,13 +210,16 @@ impl Application for Window {
                 } else {
                     let new_id = Id::unique();
                     self.popup.replace(new_id);
-                    let mut popup_settings =
-                        self.core
-                            .applet
-                            .get_popup_settings(Id::MAIN, new_id, None, None, None);
+                    let mut popup_settings = self.core.applet.get_popup_settings(
+                        self.core.main_window_id().unwrap(),
+                        new_id,
+                        None,
+                        None,
+                        None,
+                    );
                     popup_settings.positioner.size_limits =
                         iced::Limits::NONE.width(680.0).height(800.0);
-                    get_popup(popup_settings)
+                    return get_popup(popup_settings);
                 });
             }
             Message::EnterPrompt(prompt) => self.prompt = prompt,
@@ -447,7 +450,7 @@ impl Application for Window {
         self.core
             .applet
             .popup_container(content_list)
-            .height(Length::Fill)
+            .limits(iced::Limits::NONE.max_width(680.0).max_height(800.0))
             .into()
     }
 }
@@ -471,38 +474,15 @@ impl Window {
             .on_submit(Message::SendPrompt)
             .width(Length::Fill);
 
-        let open_images = widget::button(
-            widget::Container::new(widget::icon::from_name("mail-attachment-symbolic"))
-                .width(32)
-                .height(32)
-                .center_x()
-                .center_y(),
-        )
-        .on_press(Message::OpenImages)
-        .width(42)
-        .height(42);
+        let open_images = widget::button::icon(widget::icon::from_name("mail-attachment-symbolic"))
+            .on_press(Message::OpenImages);
 
-        let clear_chat = widget::button(
-            widget::Container::new(widget::icon::from_name("edit-clear-symbolic"))
-                .width(32)
-                .height(32)
-                .center_x()
-                .center_y(),
-        )
-        .on_press(Message::ClearChat)
-        .width(42)
-        .height(42);
+        let clear_chat = widget::button::icon(widget::icon::from_name("edit-clear-symbolic"))
+            .on_press(Message::ClearChat);
 
-        let stop_bot = widget::button(
-            widget::Container::new(widget::icon::from_name("media-playback-stop-symbolic"))
-                .width(32)
-                .height(32)
-                .center_x()
-                .center_y(),
-        )
-        .on_press(Message::StopBot)
-        .width(42)
-        .height(42);
+        let stop_bot =
+            widget::button::icon(widget::icon::from_name("media-playback-stop-symbolic"))
+                .on_press(Message::StopBot);
 
         let fields = widget::row()
             .push(prompt_input)
@@ -523,14 +503,15 @@ impl Window {
 
     //noinspection ALL
     fn settings_view(&self) -> Element<Message> {
-        let conv_section = settings::view_section(fl!("conversations"))
+        let conv_section = settings::section::section()
+            .title(fl!("conversations"))
             .add(settings::item(
                 fl!("user-avatar"),
                 widget::button::standard(fl!("open")).on_press(Message::FindAvatar),
             ))
             .add(settings::item(
                 fl!("keep-context"),
-                widget::toggler(None, self.keep_context, |_| Message::ToggleContext),
+                widget::toggler(self.keep_context).on_toggle(|_| Message::ToggleContext),
             ))
             .add(settings::item(
                 fl!("select-conversation"),
@@ -553,7 +534,8 @@ impl Window {
                 widget::button::standard(fl!("remove")).on_press(Message::RemoveConversation),
             ));
 
-        let models_section = settings::view_section(fl!("manage-models"))
+        let models_section = settings::section()
+            .title(fl!("manage-models"))
             .add(settings::item_row(vec![
                 widget::text_input("llava:latest", &self.model_to_pull)
                     .width(Length::Fill)
@@ -612,10 +594,10 @@ impl Window {
 
         let ai = widget::Container::new(text)
             .padding(12)
-            .style(theme::Container::List);
+            .class(theme::Container::List);
 
         let avatar: &[u8] = include_bytes!("../data/icons/avatar.png");
-        let handle = widget::image::Handle::from_memory(avatar);
+        let handle = widget::image::Handle::from_bytes(avatar);
         let avatar_widget = widget::image(handle)
             .width(Length::Fixed(48.0))
             .height(Length::Fixed(48.0));
@@ -633,7 +615,7 @@ impl Window {
             MessageContent::Image(image) => match image {
                 ImageAttachment::Svg(_) => todo!(),
                 ImageAttachment::Raster(raster) => {
-                    let handle = widget::image::Handle::from_memory(raster.data.clone());
+                    let handle = widget::image::Handle::from_bytes(raster.data.clone());
 
                     column = column.push(widget::image(handle))
                 }
@@ -651,7 +633,7 @@ impl Window {
 
         let container = widget::container(column)
             .padding(12)
-            .style(theme::Container::List);
+            .class(theme::Container::List);
 
         let avatar_widget = widget::image(self.user_avatar.clone())
             .width(Length::Fixed(48.0))
@@ -693,7 +675,7 @@ impl Window {
         let user = widget::Container::new(
             widget::Container::new(widget::text(message))
                 .padding(12)
-                .style(theme::Container::List),
+                .class(theme::Container::List),
         )
         .width(Length::Fill)
         .align_x(Horizontal::Right);
@@ -706,12 +688,13 @@ impl Window {
     }
 
     fn menu_bar(&self) -> Element<Message> {
-        settings::view_section("")
+        settings::section()
+            .title("")
             .add(settings::item_row(vec![
-                widget::button(widget::container(text(fl!("chat"))))
+                widget::button::standard(fl!("chat"))
                     .on_press(Message::ChatPage)
                     .into(),
-                widget::button(text(fl!("settings")))
+                widget::button::standard(fl!("settings"))
                     .on_press(Message::SettingsPage)
                     .into(),
                 widget::dropdown(&self.models, self.model_index, Message::ChangeModel)
