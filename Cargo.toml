@@ -31,11 +31,12 @@ base64 = "0.22.1"
 syntect = "5.2.0"
 two-face = "0.3.0"
 markdown = "0.3.0"
+open = "5.3"
 
 [dependencies.libcosmic]
 git = "https://github.com/pop-os/libcosmic"
 default-features = false
-features = ["applet","tokio", "wayland", "winit", "multi-window"]
+features = ["applet", "markdown", "tokio", "wayland", "winit"]
 
 [features]
 default = ["wgpu"]

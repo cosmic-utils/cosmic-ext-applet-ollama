@@ -1,7 +1,6 @@
 mod api;
 mod chat;
 mod localize;
-mod markdown;
 mod models;
 mod stream;
 mod window;

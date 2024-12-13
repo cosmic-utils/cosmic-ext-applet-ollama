@@ -7,10 +7,10 @@ use cosmic::{
         alignment::Horizontal,
         id,
         platform_specific::shell::wayland::commands::popup::{destroy_popup, get_popup},
+        theme::Palette,
         window::Id,
         Length, Subscription,
     },
-    iced_runtime::clipboard,
     iced_widget::{
         scrollable::{snap_to, RelativeOffset},
         Scrollable,
@@ -27,7 +27,6 @@ use crate::{
         MessageContent, Text,
     },
     fl,
-    markdown::markdown,
     models::installed_models,
     stream, Settings,
 };
@@ -77,7 +76,7 @@ pub enum Message {
     OllamaAdressFlag(bool),
     OllamaAddressInput(String),
     OllamaAddressSend,
-    Clipboard(String),
+    OpenLink(iced::widget::markdown::Url),
 }
 
 pub struct Window {
@@ -418,8 +417,8 @@ impl Application for Window {
                     .set_ollama_address(self.ollama_address.clone());
                 let _ = self.settings.save();
             }
-            Message::Clipboard(selection) => {
-                commands.push(clipboard::write(selection));
+            Message::OpenLink(url) => {
+                let _ = open::that_in_background(url.to_string());
             }
         };
 
@@ -590,9 +589,16 @@ impl Window {
     }
 
     fn bot_bubble(&self, message: String) -> Element<Message> {
-        let text = markdown(message).on_copy(Message::Clipboard);
+        let content: Vec<iced::widget::markdown::Item> =
+            widget::markdown::parse(&message).collect();
+        let markdown = iced::widget::markdown(
+            &content,
+            iced::widget::markdown::Settings::default(),
+            iced::widget::markdown::Style::from_palette(Palette::DARK),
+        )
+        .map(Message::OpenLink);
 
-        let ai = widget::Container::new(text)
+        let ai = widget::Container::new(markdown)
             .padding(12)
             .class(theme::Container::List);
 
@@ -622,8 +628,14 @@ impl Window {
             },
             MessageContent::Text(txt) => {
                 if !txt.is_empty() {
-                    let mut markdown = markdown(txt.clone()).on_copy(Message::Clipboard);
-                    markdown.margin(48.0);
+                    let content: Vec<iced::widget::markdown::Item> =
+                        iced::widget::markdown::parse(txt).collect();
+                    let markdown = iced::widget::markdown(
+                        &content,
+                        iced::widget::markdown::Settings::default(),
+                        iced::widget::markdown::Style::from_palette(Palette::DARK),
+                    )
+                    .map(Message::OpenLink);
                     column = column.push(markdown)
                 }
             }
