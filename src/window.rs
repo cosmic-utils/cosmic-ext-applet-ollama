@@ -16,7 +16,7 @@ use cosmic::{
         Scrollable,
     },
     theme,
-    widget::{self, horizontal_space, settings},
+    widget::{self, settings},
     Application, Element, Task as Command,
 };
 use std::path::PathBuf;
@@ -456,7 +456,10 @@ impl Application for Window {
 
 impl Window {
     fn chat_view(&self) -> Element<Message> {
-        let mut chat = widget::column().spacing(10).width(Length::Fill);
+        let mut chat = widget::column()
+            .spacing(10)
+            .padding(12.0)
+            .width(Length::Fill);
 
         chat = chat.push(self.chat_messages(&self.conversation));
 
@@ -490,13 +493,9 @@ impl Window {
             .push(stop_bot)
             .spacing(10);
 
-        let chat_with_margin = widget::row()
-            .push(chat)
-            .push(horizontal_space().width(Length::Fixed(12.0)));
-
         widget::column()
             .push(padded_control(
-                widget::Container::new(Scrollable::new(chat_with_margin).id(self.chat_id.clone()))
+                widget::Container::new(Scrollable::new(chat).id(self.chat_id.clone()))
                     .height(Length::Fill),
             ))
             .push(padded_control(fields))
