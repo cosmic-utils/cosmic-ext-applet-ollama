@@ -6,25 +6,16 @@ mod stream;
 mod window;
 
 use cosmic::widget;
-use cosmic_text::{FontSystem, SwashCache};
 use ron::de::from_reader;
 use ron::ser::{to_string_pretty, PrettyConfig};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{BufReader, Write};
 use std::path::PathBuf;
-use std::sync::{Mutex, OnceLock};
 use window::Window;
-
-static FONT_SYSTEM: OnceLock<Mutex<FontSystem>> = OnceLock::new();
-static SWASH_CACHE: OnceLock<Mutex<SwashCache>> = OnceLock::new();
 
 pub fn run() -> cosmic::iced::Result {
     localize::localize();
-
-    FONT_SYSTEM.get_or_init(|| Mutex::new(FontSystem::new()));
-    SWASH_CACHE.get_or_init(|| Mutex::new(SwashCache::new()));
-
     cosmic::applet::run::<Window>(())
 }
 
