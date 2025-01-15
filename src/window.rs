@@ -317,14 +317,22 @@ impl Application for Window {
                 self.selected_saved_conv = Some(index);
             }
             Message::LoadConversation => {
-                self.conversation = load_conversation(
-                    self.saved_conversations[self.selected_saved_conv.unwrap()].clone(),
-                );
+                if let Some(selected_saved_conv) = self.selected_saved_conv {
+                    if self.saved_conversations.len() > selected_saved_conv {
+                        self.conversation = load_conversation(
+                            self.saved_conversations[selected_saved_conv].clone(),
+                        );
+                    }
+                }
             }
             Message::RemoveConversation => {
-                let _ = self
-                    .conversation
-                    .remove(self.saved_conversations[self.selected_saved_conv.unwrap()].clone());
+                if let Some(selected_saved_conv) = self.selected_saved_conv {
+                    if self.saved_conversations.len() > selected_saved_conv {
+                        let _ = self
+                            .conversation
+                            .remove(self.saved_conversations[selected_saved_conv].clone());
+                    }
+                }
 
                 self.saved_conversations = read_conversation_files().unwrap();
             }
