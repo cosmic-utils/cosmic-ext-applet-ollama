@@ -18,6 +18,6 @@ save-conversation = Conversatie opslaan
 load-conversation = Conversatie laden
 remove-conversation = Conversatie verwijderen
 manage-models = Modellen beheren
-pull-model = Pull model
+pull-model = Model downloaden
 remove-model = Model verwijderen
 user-avatar = Avatar instellen
