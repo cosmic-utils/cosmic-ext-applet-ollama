@@ -54,6 +54,12 @@ _install_applet id name: \
 # Installs files into the system
 install:(_install_applet 'io.github.elevenhsoft.CosmicExtAppletOllama' 'cosmic-ext-applet-ollama') 
 
+# Uninstall the application from the system
+uninstall:
+    rm -f {{bindir}}/{{name}}
+    rm -f {{iconsdir}}/io.github.elevenhsoft.CosmicExtAppletOllama-symbolic.svg
+    rm -f {{sharedir}}/applications/io.github.elevenhsoft.CosmicExtAppletOllama.desktop
+
 # Vendor Cargo dependencies locally
 vendor:
     mkdir -p .cargo
