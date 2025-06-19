@@ -31,7 +31,7 @@ use crate::{
     stream, Settings,
 };
 
-const ID: &str = "io.github.elevenhsoft.CosmicExtAppletOllama";
+const ID: &str = "dev.heppen.ollama";
 
 #[derive(Debug, Clone)]
 pub enum Pages {
@@ -432,7 +432,7 @@ impl Application for Window {
     fn view(&self) -> Element<Self::Message> {
         self.core
             .applet
-            .icon_button("io.github.elevenhsoft.CosmicExtAppletOllama-symbolic")
+            .icon_button("dev.heppen.ollama-symbolic")
             .on_press(Message::TogglePopup)
             .into()
     }

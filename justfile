@@ -37,7 +37,7 @@ _link_applet name:
     ln -sf {{cosmic-applets-bin}} {{bindir}}/{{name}}
 
 _install_icon:
-    install -Dm0644 'data/icons/scalable/apps/io.github.elevenhsoft.CosmicExtAppletOllama-symbolic.svg' {{iconsdir}}/io.github.elevenhsoft.CosmicExtAppletOllama-symbolic.svg
+    install -Dm0644 'data/icons/scalable/apps/dev.heppen.ollama-symbolic.svg' {{iconsdir}}/dev.heppen.ollama-symbolic.svg
 
 _install_desktop path:
     install -Dm0644 {{path}} {{sharedir}}/applications/{{file_name(path)}}
@@ -52,13 +52,13 @@ _install_applet id name: \
 
 
 # Installs files into the system
-install:(_install_applet 'io.github.elevenhsoft.CosmicExtAppletOllama' 'cosmic-ext-applet-ollama') 
+install:(_install_applet 'dev.heppen.ollama' 'cosmic-ext-applet-ollama') 
 
 # Uninstall the application from the system
 uninstall:
     rm -f {{bindir}}/{{name}}
-    rm -f {{iconsdir}}/io.github.elevenhsoft.CosmicExtAppletOllama-symbolic.svg
-    rm -f {{sharedir}}/applications/io.github.elevenhsoft.CosmicExtAppletOllama.desktop
+    rm -f {{iconsdir}}/dev.heppen.ollama-symbolic.svg
+    rm -f {{sharedir}}/applications/dev.heppen.ollama.desktop
 
 # Vendor Cargo dependencies locally
 vendor:
