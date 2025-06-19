@@ -1,6 +1,6 @@
 use ashpd::desktop::file_chooser::{FileFilter, SelectedFiles};
 use cosmic::{
-    app::{Core, Message as CosmicMessage},
+    app::Core,
     applet::padded_control,
     iced::{
         self,
@@ -17,7 +17,7 @@ use cosmic::{
     },
     theme,
     widget::{self, settings},
-    Application, Element, Task as Command,
+    Action, Application, Element, Task as Command,
 };
 use std::path::PathBuf;
 
@@ -55,7 +55,7 @@ pub enum Message {
     PopupClosed(Id),
     TogglePopup,
     EnterPrompt(String),
-    SendPrompt,
+    SendPrompt(String),
     ChangeModel(usize),
     ClearChat,
     ModelPullInput(String),
@@ -75,7 +75,7 @@ pub enum Message {
     AvatarResult(PathBuf),
     OllamaAdressFlag(bool),
     OllamaAddressInput(String),
-    OllamaAddressSend,
+    OllamaAddressSend(String),
     OpenLink(iced::widget::markdown::Url),
 }
 
@@ -125,10 +125,7 @@ impl Application for Window {
         &mut self.core
     }
 
-    fn init(
-        core: Core,
-        _flags: Self::Flags,
-    ) -> (Self, Command<cosmic::app::Message<Self::Message>>) {
+    fn init(core: Core, _flags: Self::Flags) -> (Self, Command<Action<Message>>) {
         let system_messages = Vec::new();
         let models: Vec<String> = installed_models();
         let settings = Settings::load();
@@ -185,8 +182,8 @@ impl Application for Window {
         ])
     }
 
-    fn update(&mut self, message: Message) -> Command<CosmicMessage<Message>> {
-        let mut commands: Vec<Command<CosmicMessage<Message>>> = Vec::new();
+    fn update(&mut self, message: Message) -> Command<Action<Message>> {
+        let mut commands: Vec<Command<Action<Message>>> = Vec::new();
 
         match message {
             Message::ChatPage => {
@@ -222,9 +219,9 @@ impl Application for Window {
                 });
             }
             Message::EnterPrompt(prompt) => self.prompt = prompt,
-            Message::SendPrompt => {
+            Message::SendPrompt(prompt) => {
                 self.conversation
-                    .push(Text::User(MessageContent::Text(self.prompt.clone())));
+                    .push(Text::User(MessageContent::Text(prompt)));
                 self.last_id += 1;
 
                 if !self.keep_context {
@@ -373,7 +370,7 @@ impl Application for Window {
                             Vec::new()
                         }
                     },
-                    |files| cosmic::app::message::app(Message::ImagesResult(files)),
+                    |files| Message::ImagesResult(files).into(),
                 ));
             }
             Message::ImagesResult(result) => {
@@ -410,7 +407,7 @@ impl Application for Window {
                         PathBuf::new()
                     }
                 },
-                |path| cosmic::app::message::app(Message::AvatarResult(path)),
+                |path| Message::AvatarResult(path).into(),
             )),
             Message::AvatarResult(path) => {
                 let handle = widget::image::Handle::from_path(&path);
@@ -420,9 +417,8 @@ impl Application for Window {
             }
             Message::OllamaAdressFlag(flag) => self.ollama_address_edit = flag,
             Message::OllamaAddressInput(input) => self.ollama_address = input,
-            Message::OllamaAddressSend => {
-                self.settings
-                    .set_ollama_address(self.ollama_address.clone());
+            Message::OllamaAddressSend(addr) => {
+                self.settings.set_ollama_address(addr);
                 let _ = self.settings.save();
             }
             Message::OpenLink(url) => {
