@@ -25,6 +25,7 @@ pub struct Settings {
     keep_context: bool,
     model: String,
     ollama_address: String,
+    keep_alive_model: String,
 }
 
 impl Settings {
@@ -34,6 +35,7 @@ impl Settings {
             keep_context: true,
             model: String::new(),
             ollama_address: "localhost:11434".to_string(),
+            keep_alive_model: "5m".into(),
         }
     }
 
@@ -66,9 +68,14 @@ impl Settings {
         self
     }
 
+    pub fn set_keep_alive_model(&mut self, time: String) -> &mut Self {
+        self.keep_alive_model = time;
+        self
+    }
+
     pub fn load() -> Settings {
-        let data_path = dirs::data_dir()
-            .expect("xdg-data not found")
+        let data_path = dirs::config_dir()
+            .expect("xdg-config not found")
             .join("cosmic-ext-applet-ollama")
             .join("settings.ron");
 
@@ -83,8 +90,8 @@ impl Settings {
     }
 
     pub fn save(&self) -> anyhow::Result<()> {
-        let data_path = dirs::data_dir()
-            .expect("xdg-data not found")
+        let data_path = dirs::config_dir()
+            .expect("xdg-config not found")
             .join("cosmic-ext-applet-ollama");
 
         fs::create_dir_all(&data_path)?;
