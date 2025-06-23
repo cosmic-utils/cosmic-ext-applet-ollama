@@ -18,11 +18,14 @@ bindir := rootdir + prefixdir
 
 cosmic-applets-bin := prefixdir / 'cosmic-applets'
 
-default: build-release
+default: run
 
 # Compiles with debug profile
 build-debug *args:
     cargo build {{args}}
+
+run:
+    cargo run --release
 
 # Compiles with release profile
 build-release *args: (build-debug '--release' args)
