@@ -19,8 +19,8 @@ pub enum Event {
 
 #[derive(Debug, Clone)]
 pub enum Request {
-    Ask((String, String, Vec<String>)),
-    AskWithContext((String, String, Vec<String>, Option<Vec<u64>>)),
+    Ask((String, String, Vec<String>, String)),
+    AskWithContext((String, String, Vec<String>, Option<Vec<u64>>, String)),
     PullModel(String),
     RemoveModel(String),
 }
@@ -37,11 +37,21 @@ pub fn service() -> impl Stream<Item = Event> + MaybeSend {
 
         while let Some(request) = requests_rx.recv().await {
             match request {
-                Request::Ask((model, text, images)) => {
-                    _ = client_request(model, text, images, None, &responses_tx, client).await
+                Request::Ask((model, text, images, keep_alive)) => {
+                    _ = client_request(model, text, images, None, keep_alive, &responses_tx, client)
+                        .await
                 }
-                Request::AskWithContext((model, text, images, context)) => {
-                    _ = client_request(model, text, images, context, &responses_tx, client).await
+                Request::AskWithContext((model, text, images, context, keep_alive)) => {
+                    _ = client_request(
+                        model,
+                        text,
+                        images,
+                        context,
+                        keep_alive,
+                        &responses_tx,
+                        client,
+                    )
+                    .await
                 }
                 Request::PullModel(model) => {
                     _ = pull_request(model.to_string(), &responses_tx, pull_client).await
@@ -67,11 +77,13 @@ async fn client_request<'a>(
     prompt: String,
     images: Vec<String>,
     context: Option<Vec<u64>>,
+    keep_alive_model: String,
     tx: &mpsc::Sender<Event>,
     client: &'a mut Option<(Bot, oneshot::Sender<()>)>,
 ) -> &'a mut Option<(Bot, oneshot::Sender<()>)> {
     if client.is_none() {
-        *client = match Bot::new(model.to_string(), prompt, images, context).await {
+        *client = match Bot::new(model.to_string(), prompt, images, context, keep_alive_model).await
+        {
             Ok((new_client, responses)) => {
                 let tx = tx.clone();
 

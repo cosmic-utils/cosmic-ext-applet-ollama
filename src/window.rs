@@ -79,6 +79,7 @@ pub enum Message {
     OllamaAdressFlag(bool),
     OllamaAddressInput(String),
     OllamaAddressSend(String),
+    SetKeepAliveTime(String),
     OpenLink(iced::widget::markdown::Url),
 }
 
@@ -108,6 +109,7 @@ pub struct Window {
     user_avatar: widget::image::Handle,
     ollama_address: String,
     ollama_address_edit: bool,
+    keep_alive_model: String,
     settings: Settings,
 }
 
@@ -169,6 +171,7 @@ impl Application for Window {
                 user_avatar: settings.get_avatar_handle(),
                 ollama_address: settings.ollama_address.clone(),
                 ollama_address_edit: false,
+                keep_alive_model: settings.keep_alive_model.clone(),
                 settings,
             },
             Command::none(),
@@ -247,6 +250,7 @@ impl Application for Window {
                                 self.selected_model.clone(),
                                 self.prompt.clone(),
                                 self.images.clone(),
+                                self.keep_alive_model.clone(),
                             )))
                         }
                         StreamingRequest::AskWithContext => {
@@ -255,6 +259,7 @@ impl Application for Window {
                                 self.prompt.clone(),
                                 self.images.clone(),
                                 self.context.clone(),
+                                self.keep_alive_model.clone(),
                             )))
                         }
                         StreamingRequest::PullModel => {
@@ -430,6 +435,12 @@ impl Application for Window {
                 self.settings.set_ollama_address(addr);
                 let _ = self.settings.save();
             }
+            Message::SetKeepAliveTime(time_string) => {
+                self.keep_alive_model = time_string;
+                self.settings
+                    .set_keep_alive_model(self.keep_alive_model.clone());
+                let _ = self.settings.save();
+            }
             Message::OpenLink(url) => {
                 let _ = open::that_in_background(url.to_string());
             }
@@ -580,7 +591,12 @@ impl Window {
             )
             .on_input(Message::OllamaAddressInput)
             .on_submit(Message::OllamaAddressSend)
-            .into()]));
+            .into()]))
+            .add(settings::item(
+                fl!("keep-alive"),
+                widget::text_input("5m", &self.keep_alive_model)
+                    .on_input(Message::SetKeepAliveTime),
+            ));
 
         let spacer = widget::Space::with_height(Length::Fill);
 

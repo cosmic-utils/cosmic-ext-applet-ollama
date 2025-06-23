@@ -8,17 +8,19 @@ use crate::Settings;
 struct GenerateNonContext {
     model: String,
     prompt: String,
-    stream: bool,
     images: Vec<String>,
+    stream: bool,
+    keep_alive: String,
 }
 
 #[derive(Serialize)]
 struct GenerateWithContext {
     model: String,
     prompt: String,
+    stream: bool,
     images: Vec<String>,
     context: Vec<u64>,
-    stream: bool,
+    keep_alive: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -45,6 +47,7 @@ impl Bot {
         prompt: String,
         images: Vec<String>,
         context: Option<Vec<u64>>,
+        keep_alive: String,
     ) -> anyhow::Result<(
         Self,
         impl Stream<Item = anyhow::Result<bytes::Bytes, reqwest::Error>>,
@@ -57,6 +60,7 @@ impl Bot {
                 model,
                 prompt,
                 images,
+                keep_alive,
                 stream: true,
             };
 
@@ -71,8 +75,9 @@ impl Bot {
                 model,
                 prompt,
                 images,
-                context: context.unwrap(),
                 stream: true,
+                keep_alive,
+                context: context.unwrap(),
             };
 
             client

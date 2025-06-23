@@ -21,3 +21,4 @@ manage-models = Manage models
 pull-model = Pull model
 remove-model = Remove model
 user-avatar = Set avatar
+keep-alive = How long to keep model in memory (string)

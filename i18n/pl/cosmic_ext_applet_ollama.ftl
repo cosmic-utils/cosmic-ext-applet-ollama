@@ -21,3 +21,4 @@ manage-models = Zarządzaj modelami
 pull-model = Pobierz model
 remove-model = Usuń model
 user-avatar = Ustaw obrazek awatara
+keep-alive = Jak długo przechowywać model w pamięci (string)
