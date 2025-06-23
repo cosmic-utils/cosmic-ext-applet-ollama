@@ -7,6 +7,7 @@ use cosmic::{
         alignment::Horizontal,
         id,
         platform_specific::shell::wayland::commands::popup::{destroy_popup, get_popup},
+        stream::channel,
         theme::Palette,
         window::Id,
         Length, Subscription,
@@ -19,7 +20,8 @@ use cosmic::{
     widget::{self, settings},
     Action, Application, Element, Task as Command,
 };
-use std::path::PathBuf;
+use futures::{SinkExt as _, StreamExt as _};
+use std::{path::PathBuf, pin::pin};
 
 use crate::{
     chat::{
@@ -28,7 +30,8 @@ use crate::{
     },
     fl,
     models::installed_models,
-    stream, Settings,
+    stream::{self, service},
+    Settings,
 };
 
 const ID: &str = "dev.heppen.ollama";
@@ -177,9 +180,15 @@ impl Application for Window {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        Subscription::batch(vec![
-            stream::subscription(self.last_id).map(Message::BotEvent)
-        ])
+        let stream = channel(4, move |mut output| async move {
+            let mut stream = pin!(service());
+
+            while let Some(event) = stream.next().await {
+                let _res = output.send(Message::BotEvent(event)).await;
+            }
+        });
+
+        Subscription::run_with_id(self.last_id, stream)
     }
 
     fn update(&mut self, message: Message) -> Command<Action<Message>> {

@@ -1,6 +1,3 @@
-use futures::SinkExt;
-use std::hash::Hash;
-
 use cosmic::{
     iced::futures::{Stream, StreamExt},
     iced_futures::MaybeSend,
@@ -26,24 +23,6 @@ pub enum Request {
     AskWithContext((String, String, Vec<String>, Option<Vec<u64>>)),
     PullModel(String),
     RemoveModel(String),
-}
-
-pub fn subscription<I: 'static + Hash + Copy + Send + Sync>(
-    id: I,
-) -> cosmic::iced::Subscription<Event> {
-    use cosmic::iced::{stream, Subscription};
-
-    Subscription::run_with_id(
-        id,
-        stream::channel(1, |mut output| async move {
-            loop {
-                let mut responses = std::pin::pin!(service());
-                while let Some(message) = responses.next().await {
-                    let _res = output.send(message).await;
-                }
-            }
-        }),
-    )
 }
 
 pub fn service() -> impl Stream<Item = Event> + MaybeSend {
@@ -170,7 +149,7 @@ async fn pull_request<'a>(
     client
 }
 
-async fn remove_request<'a>(model: String, tx: &mpsc::Sender<Event>) -> anyhow::Result<()> {
+async fn remove_request(model: String, tx: &mpsc::Sender<Event>) -> anyhow::Result<()> {
     if let Ok((_new_client, status_code)) = RemoveModel::new(model).await {
         if status_code.is_success() {
             _ = tx.send(Event::RemoveStatus(String::from("Removed successfully")));
