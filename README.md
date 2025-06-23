@@ -52,7 +52,7 @@ cd cosmic-ext-applet-ollama
 Run just:
 
 ```sh
-just
+just build-release
 ```
 
 ### Installing
