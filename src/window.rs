@@ -449,7 +449,7 @@ impl Application for Window {
         Command::batch(commands)
     }
 
-    fn view(&self) -> Element<Self::Message> {
+    fn view(&self) -> Element<'_, Self::Message> {
         self.core
             .applet
             .icon_button("dev.heppen.ollama-symbolic")
@@ -457,7 +457,7 @@ impl Application for Window {
             .into()
     }
 
-    fn view_window(&self, _id: Id) -> Element<Self::Message> {
+    fn view_window(&self, _id: Id) -> Element<'_, Self::Message> {
         let menu_row = widget::row().push(padded_control(self.menu_bar()));
 
         let page_view = match self.page {
@@ -479,7 +479,7 @@ impl Application for Window {
 }
 
 impl Window {
-    fn chat_view(&self) -> Element<Message> {
+    fn chat_view(&self) -> Element<'_, Message> {
         let mut chat = widget::column()
             .spacing(10)
             .padding(12.0)
@@ -528,7 +528,7 @@ impl Window {
     }
 
     //noinspection ALL
-    fn settings_view(&self) -> Element<Message> {
+    fn settings_view(&self) -> Element<'_, Message> {
         let conv_section = settings::section::section()
             .title(fl!("conversations"))
             .add(settings::item(
@@ -620,7 +620,7 @@ impl Window {
             .into()
     }
 
-    fn bot_bubble(&self, message: String) -> Element<Message> {
+    fn bot_bubble(&self, message: String) -> Element<'_, Message> {
         let content: Vec<iced::widget::markdown::Item> =
             widget::markdown::parse(&message).collect();
         let markdown = iced::widget::markdown(
@@ -646,7 +646,7 @@ impl Window {
         widget::Container::new(content).into()
     }
 
-    fn user_bubble(&self, message: &MessageContent) -> Element<Message> {
+    fn user_bubble(&self, message: &MessageContent) -> Element<'_, Message> {
         let mut column = widget::column();
 
         match message {
@@ -695,7 +695,7 @@ impl Window {
             .into()
     }
 
-    fn chat_messages(&self, conv: &Conversation) -> Element<Message> {
+    fn chat_messages(&self, conv: &Conversation) -> Element<'_, Message> {
         let mut content = widget::column().spacing(20);
 
         for c in &conv.messages {
@@ -715,7 +715,7 @@ impl Window {
         widget::Container::new(content).width(Length::Fill).into()
     }
 
-    fn system_bubble(&self, message: String) -> Element<Message> {
+    fn system_bubble(&self, message: String) -> Element<'_, Message> {
         let user = widget::Container::new(
             widget::Container::new(widget::text(message))
                 .padding(12)
@@ -731,7 +731,7 @@ impl Window {
         widget::Container::new(content).width(Length::Fill).into()
     }
 
-    fn menu_bar(&self) -> Element<Message> {
+    fn menu_bar(&self) -> Element<'_, Message> {
         settings::section()
             .title("")
             .add(settings::item_row(vec![
