@@ -21,3 +21,4 @@ manage-models = Hantera modeller
 pull-model = Dra tillbaka modell
 remove-model = Ta bort modell
 user-avatar = Ställ in avatar
+keep-alive = Hur länge modellen ska sparas i minnet (sträng)
